@@ -1,2 +1,6 @@
 .env
 cache/*
+data/*
+exports/*
+charts/*
+__pycache__/*
