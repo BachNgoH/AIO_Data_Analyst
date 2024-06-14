@@ -1,9 +1,10 @@
 import chainlit as cl
-from src.agents.base import BaseChainlitAgent
 from llama_index.agent.llm_compiler import LLMCompilerAgentWorker
 from llama_index.core.agent import AgentRunner
 from llama_index.llms.groq import Groq
 from dotenv import load_dotenv
+from src.agents.base import BaseChainlitAgent
+from src.utils.llm_utils import load_model
 
 load_dotenv(override=True)
 
@@ -18,7 +19,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
     
     @classmethod
     async def aon_start(cls, *args, **kwargs):
-        llm = Groq(model="llama3-70b-8192")
+        llm = load_model()
         tools = cls._init_tools()
 
         agent_worker = LLMCompilerAgentWorker.from_tools(

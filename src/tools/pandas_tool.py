@@ -2,9 +2,10 @@ import pandas as pd
 from llama_index.experimental.query_engine import PandasQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.llms.groq import Groq
+from src.utils.llm_utils import load_model
 
 def load_pandas_tool():
-    llm = Groq(model="llama3-70b-8192")
+    llm = load_model()
     data_df = pd.read_csv("./data/train.csv")
     query_engine = PandasQueryEngine(df=data_df, verbose=True, llm=llm)
     
