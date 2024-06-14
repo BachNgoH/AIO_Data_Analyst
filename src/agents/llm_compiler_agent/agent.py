@@ -15,7 +15,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
     @staticmethod
     def _init_tools():
         from src.tools.pandas_tool import load_pandas_tool
-        return [load_pandas_tool()]
+        return load_pandas_tool()
     
     @classmethod
     async def aon_start(cls, *args, **kwargs):

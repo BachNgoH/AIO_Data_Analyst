@@ -1,6 +1,6 @@
 # LLM Settings
-# LLM_PROVIDER="gemini"
-# MODEL_ID = "models/gemini-1.5-flash"
+LLM_PROVIDER="gemini"
+MODEL_ID = "models/gemini-1.5-flash"
 
 TEMPERATURE = 0.8
 

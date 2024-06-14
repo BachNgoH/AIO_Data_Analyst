@@ -1,24 +1,38 @@
-from typing import Optional
 import logging
+import pandas as pd
 from llama_index.core.llms import LLM 
+from llama_index.core.base.response.schema import Response
+from llama_index.core.tools import FunctionTool
+from src.tools.data_analysis.output_parser import InstructionParser
+from src.tools.data_analysis.prompts import (
+    DEFAULT_PANDAS_PROMPT, 
+    DEFAULT_RESPONSE_SYNTHESIS_PROMPT, 
+    DEFAULT_INSTRUCTION_STR
+)
 
 class DataAnalysisToolSuite:
         
-    def __init__(self, llm : LLM) -> None:
+    def __init__(self, df: pd.DataFrame, llm : LLM) -> None:
         self._llm = llm
-        self._pandas_prompt = "Generate pandas code for the query."
-        self._response_synthesis_prompt = "Synthesize a response based on the query and the pandas output."
-        self._instruction_str = "Generate pandas code for the query."
+        self._pandas_prompt = DEFAULT_PANDAS_PROMPT
+        self._response_synthesis_prompt = DEFAULT_RESPONSE_SYNTHESIS_PROMPT
+        self._instruction_str = DEFAULT_INSTRUCTION_STR
         self._verbose = True
-        self._synthesize_response = True
+        self._synthesize_response = False
+        self._instruction_parser = InstructionParser(df)
+        self._df = df 
+        self._head = 5
 
+    def _get_table_context(self) -> str:
+        """Get table context."""
+        return str(self._df.head(self._head))
 
     def retry_generate_code(self, code: str, exception: Exception):
-        correction_input = ErrorCorrectionPipelineInput(code, exception)
-        return self.code_exec_error_pipeline.run(correction_input)
+        # correction_input = ErrorCorrectionPipelineInput(code, exception)
+        # return self.code_exec_error_pipeline.run(correction_input)
+        pass
 
-
-    def run_generate_code(self, query_str) -> dict:
+    def generate_and_run_code(self, query_str) -> dict:
         """
         Generate code for a given query and execute the code.
 
@@ -38,7 +52,7 @@ class DataAnalysisToolSuite:
         )
 
         if self._verbose:
-            logging.info(f"> Pandas Instructions:\n" f"```\n{pandas_response_str}\n```\n")
+            logging.info(f"> Instructions:\n" f"```\n{pandas_response_str}\n```\n")
         pandas_output = self._instruction_parser.parse(pandas_response_str)
         if self._verbose:
             logging.info(f"> Execution Output: {pandas_output}\n")
@@ -61,3 +75,9 @@ class DataAnalysisToolSuite:
             response_str = str(pandas_output)
 
         return Response(response=response_str, metadata=response_metadata)
+
+
+    def get_tools(self):
+        """Get tools."""
+        return [
+            FunctionTool.from_defaults(self.generate_and_run_code)]
