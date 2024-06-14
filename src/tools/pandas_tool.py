@@ -5,7 +5,7 @@ from llama_index.llms.groq import Groq
 
 def load_pandas_tool():
     llm = Groq(model="llama3-70b-8192")
-    data_df = pd.read_csv("../data/train.csv")
+    data_df = pd.read_csv("./data/train.csv")
     query_engine = PandasQueryEngine(df=data_df, verbose=True, llm=llm)
     
     return QueryEngineTool(
