@@ -35,8 +35,10 @@ class LLMCompilerAgent(BaseChainlitAgent):
     @classmethod
     async def aon_message(cls, message: cl.Message, *args, **kwargs):
         content = message.content
-        response = cls._agent.chat(content)
-        await cl.Message(content=response.response).send()
-                
+        response = cls._agent.stream_chat(content)
+        msg = cl.Message(content = "")
+        for token in response.response_gen:
+            await msg.stream_token(token)
+        await msg.send()                
                 
     
