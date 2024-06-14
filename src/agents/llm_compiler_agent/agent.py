@@ -1,6 +1,6 @@
 import chainlit as cl
 from llama_index.agent.llm_compiler import LLMCompilerAgentWorker
-from llama_index.core.agent import AgentRunner
+from llama_index.core.agent import AgentRunner, ReActAgent
 from llama_index.llms.groq import Groq
 from dotenv import load_dotenv
 from src.agents.base import BaseChainlitAgent
@@ -22,10 +22,13 @@ class LLMCompilerAgent(BaseChainlitAgent):
         llm = load_model()
         tools = cls._init_tools()
 
-        agent_worker = LLMCompilerAgentWorker.from_tools(
+        # agent_worker = LLMCompilerAgentWorker.from_tools(
+        #     tools, llm=llm, verbose=True
+        # )
+        # agent = AgentRunner(agent_worker)
+        agent = ReActAgent.from_tools(
             tools, llm=llm, verbose=True
         )
-        agent = AgentRunner(agent_worker)
         cls._agent = agent
         await cl.Message(content="Ask me anything about the dataframe!!").send()
     

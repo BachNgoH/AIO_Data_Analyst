@@ -3,7 +3,7 @@
 # MODEL_ID = "models/gemini-1.5-flash"
 
 LLM_PROVIDER="openai"
-MODEL_ID = "gpt-4o"
+MODEL_ID = "gpt-3.5-turbo"
 TEMPERATURE = 0.8
 
 # Agent Settings
