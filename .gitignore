@@ -1,3 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Sphinx documentation
+docs/_build/
+
+# PyInstaller
+*.spec
+build/
+dist/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+
+# Logs
+logs/
+*.log
+
+# Other
+.DS_Store
+.env
+.gitattributes
+.gitmodules
+.idea
+.vscode
+*.swp
+*.swo
+*.bak
+*.tmp
+*.pyc
+*.pyo
+*~
+
 .env
 cache/*
 data/*
