@@ -34,10 +34,10 @@ class DataAnalysisToolSuite:
 
     def generate_and_run_code(self, query_str) -> dict:
         """
-        Generate code for a given query and execute the code.
+        Generate code for a given query and execute the code to analyze the dataframe.
 
         Args:
-            query_str (str): The query string to generate code for.
+            query_str (str): The query string in natural language.
 
         Returns:
             dict: A dictionary containing the response and metadata.
@@ -79,5 +79,4 @@ class DataAnalysisToolSuite:
 
     def get_tools(self):
         """Get tools."""
-        return [
-            FunctionTool.from_defaults(self.generate_and_run_code)]
+        return [FunctionTool.from_defaults(self.generate_and_run_code)]
