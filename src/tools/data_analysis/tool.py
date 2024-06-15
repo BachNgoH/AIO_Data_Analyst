@@ -104,7 +104,7 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n" f"```\n{pandas_response_str}\n```\n")
-            await cl.Message(content="Generated Instructions:\n" f"```\n{pandas_response_str}\n```\n").send()
+            await cl.Message(content=f"Generated Instructions:\n```python\n{pandas_response_str}\n```\n").send()
             
         pandas_output = self._instruction_parser.parse(pandas_response_str)
         if self._verbose:

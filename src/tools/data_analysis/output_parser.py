@@ -1,18 +1,26 @@
-"""Pandas output parser."""
-
+import re
+import io
 import logging
 from typing import Any, Dict, Optional, List
 import re
 import numpy as np
 import pandas as pd
+import chainlit as cl
+from enum import Enum
+from chainlit import run_sync
 from llama_index.experimental.exec_utils import safe_eval, safe_exec
 from llama_index.core.output_parsers.base import ChainableOutputParser
+import matplotlib.pyplot as plt
+from typing import Any, Dict, Optional, List
+from IPython.display import Image, display
 
 logger = logging.getLogger(__name__)
-from typing import Any, Dict, Optional, List
-import re
 
-
+class Status(Enum):
+    NO_PLOT = "No plot"
+    SHOW_PLOT_SUCCESS = "Show plot successfully!"
+    SHOW_PLOT_FAILED = "Show plot failed!"
+    
 def parse_code_markdown(text: str, only_last: bool) -> List[str]:
     # Regular expression pattern to match code within triple-backticks with an optional programming language
     pattern = r"```[a-zA-Z]*\n(.*?)```"
@@ -50,6 +58,34 @@ def parse_code_markdown(text: str, only_last: bool) -> List[str]:
 
     return code
 
+def show_plot() -> str:
+    try:
+        # Ensure there's a plot to display
+        if not plt.get_fignums():
+            return Status.NO_PLOT
+        
+        # Create an in-memory bytes buffer for the plot image
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        
+        # Clear the plot
+        plt.close()
+        
+        # Display the plot image
+        image = cl.Image(
+            name="plot", 
+            size="large", 
+            display="inline", 
+            content=buffer.getvalue())
+        run_sync(cl.Message(
+            content="",
+            elements=[image]
+        ).send())
+        
+        return Status.SHOW_PLOT_SUCCESS
+    except Exception as e:
+        return Status.SHOW_PLOT_FAILED
 
 def default_output_processor(
     output: str, df: pd.DataFrame, **output_kwargs: Any
@@ -89,6 +125,10 @@ def default_output_processor(
             # str(pd.dataframe) will truncate output by display.max_colwidth
             # set width temporarily to extract more text
             output_str = str(eval(module_end_str, global_vars, local_vars))
+            
+            if show_plot() == Status.SHOW_PLOT_SUCCESS:
+                return "Plot displayed successfully to the user!"
+            
             return output_str
 
         except Exception:

@@ -8,6 +8,6 @@
 LLM_PROVIDER="openai"
 MODEL_ID = "gpt-4o"
 TEMPERATURE = 0.2
-
+MAX_ITERATIONS = 30
 # Agent Settings
 AGENT_TYPE = "LLMCompilerAgent"

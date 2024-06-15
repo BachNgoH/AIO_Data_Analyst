@@ -64,7 +64,7 @@ chainlit run app.py
 AIO Data Analyst is made possible by these key technologies:
 
 - [Pandas](https://pandas.pydata.org/): For data manipulation and analysis.
-- [PandasAI](https://github.com/gventuri/pandas-ai): An AI-powered extension of Pandas for more advanced data analysis.
+- [PandasAI](https://github.com/gventuri/pandas-ai): Referencing for implementing advanced data analysis.
 - [LlamaIndex](https://www.llamaindex.ai/): Providing the RAG (Retrieval Augmented Generation) framework.
 - [Chainlit](https://docs.chainlit.io/get-started/overview): Enabling the intuitive user interface.
 

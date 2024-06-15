@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from src.agents.base import BaseChainlitAgent
 from src.utils.llm_utils import load_model
 from .prompts import WELCOME_MESSAGE
+from src.const import MAX_ITERATIONS
 
 load_dotenv(override=True)
 
@@ -49,7 +50,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
         # )
         # agent = AgentRunner(agent_worker)
         agent = ReActAgent.from_tools(
-            tools, llm=llm, verbose=True
+            tools, llm=llm, verbose=True, max_iterations=MAX_ITERATIONS
         )
         LLMCompilerAgent._agent = agent
     
