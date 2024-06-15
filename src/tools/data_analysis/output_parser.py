@@ -110,8 +110,8 @@ def default_output_processor(output: str, df: pd.DataFrame, timeout: int = 10, *
         )
         return output
 
-    local_vars = {"df": df, "sns": sns, "plt": plt}
-    global_vars = {"np": np, "pd": pd}
+    local_vars = {"df": df, "sns": sns, "plt": plt, "np": np, "pd": pd}
+    global_vars = {}
 
     output = parse_code_markdown(output, only_last=True)
 
