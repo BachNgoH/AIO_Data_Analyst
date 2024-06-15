@@ -1,22 +1,28 @@
 import re
 import io
 import logging
-from typing import Any, Dict, Optional, List
+import signal
+import sys
+import ast
 import re
+import traceback
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import chainlit as cl
 from enum import Enum
-from chainlit import run_sync
-from llama_index.experimental.exec_utils import safe_eval, safe_exec
-from llama_index.core.output_parsers.base import ChainableOutputParser
-import matplotlib.pyplot as plt
 from typing import Any, Dict, Optional, List
-from IPython.display import Image, display
 
+from chainlit import run_sync
+# from llama_index.experimental.exec_utils import safe_eval, safe_exec
+from llama_index.core.output_parsers.base import ChainableOutputParser
 logger = logging.getLogger(__name__)
+
+class TimeoutException(Exception):
+    pass
+
 
 class Status(Enum):
     NO_PLOT = "No plot"
@@ -89,14 +95,12 @@ def show_plot() -> str:
     except Exception as e:
         return Status.SHOW_PLOT_FAILED
 
-def default_output_processor(
-    output: str, df: pd.DataFrame, **output_kwargs: Any
-) -> str:
-    """Process outputs in a default manner."""
-    import ast
-    import sys
-    import traceback
 
+def timeout_handler(signum, frame):
+    raise TimeoutException("Timed out!")
+
+def default_output_processor(output: str, df: pd.DataFrame, timeout: int = 10, **output_kwargs: Any) -> str:
+    """Process outputs in a default manner with a timeout."""
     if sys.version_info < (3, 9):
         logger.warning(
             "Python version must be >= 3.9 in order to use "
@@ -111,18 +115,21 @@ def default_output_processor(
 
     output = parse_code_markdown(output, only_last=True)
 
-    # NOTE: inspired from langchain's tool
-    # see langchain.tools.python.tool (PythonAstREPLTool)
     try:
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(timeout)
+        
         tree = ast.parse(output)
         module = ast.Module(tree.body[:-1], type_ignores=[])
         exec(ast.unparse(module), {}, local_vars)  # type: ignore
         module_end = ast.Module(tree.body[-1:], type_ignores=[])
         module_end_str = ast.unparse(module_end)  # type: ignore
+        
         if module_end_str.strip("'\"") != module_end_str:
             # if there's leading/trailing quotes, then we need to eval
             # string to get the actual expression
-            module_end_str = eval(module_end_str, global_vars, local_vars)        
+            module_end_str = eval(module_end_str, global_vars, local_vars)
+        
         try:
             # str(pd.dataframe) will truncate output by display.max_colwidth
             # set width temporarily to extract more text
@@ -135,6 +142,8 @@ def default_output_processor(
 
         except Exception:
             raise
+    except TimeoutException:
+        return "The execution timed out. Please try again with optimized code or increase the timeout limit."
     except Exception as e:
         err_string = (
             "There was an error running the output as Python code. "
@@ -142,6 +151,8 @@ def default_output_processor(
         )
         traceback.print_exc()
         return err_string
+    finally:
+        signal.alarm(0)  # Disable the alarm
 
 
 class InstructionParser(ChainableOutputParser):

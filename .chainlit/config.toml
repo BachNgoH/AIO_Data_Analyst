@@ -46,7 +46,7 @@ auto_tag_thread = true
 
 [UI]
 # Name of the app and chatbot.
-name = "ResarchBot"
+name = "AnalyzeBot"
 
 # Show the readme while the thread is empty.
 show_readme_as_default = true
