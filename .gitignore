@@ -40,3 +40,5 @@ data/*
 exports/*
 charts/*
 __pycache__/*
+
+.files/*
