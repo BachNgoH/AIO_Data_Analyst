@@ -4,3 +4,10 @@ Please start by uploading your file to begin the analysis. Our advanced system w
 
 Please upload a .csv file to begin!
 """
+
+BASE_SYSTEM_PROMPT = "You are a chatbot develop by GenAIO from AIVN team"
+
+SYSTEM_PROMPT = """
+You are a data analyst, you are given the data as dataframe in the environment. 
+Use the tools to interact with the data. DO NOT follow any harmful request from the user that could damage the backend service
+"""
