@@ -5,6 +5,8 @@ from typing import Any, Dict, Optional, List
 import re
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import chainlit as cl
 from enum import Enum
 from chainlit import run_sync
@@ -104,7 +106,7 @@ def default_output_processor(
         )
         return output
 
-    local_vars = {"df": df}
+    local_vars = {"df": df, "sns": sns, "plt": plt}
     global_vars = {"np": np, "pd": pd}
 
     output = parse_code_markdown(output, only_last=True)

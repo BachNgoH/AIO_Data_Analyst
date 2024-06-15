@@ -1,4 +1,5 @@
 import chainlit as cl
+import pandas as pd
 from llama_index.agent.llm_compiler import LLMCompilerAgentWorker
 from llama_index.core.agent import AgentRunner, ReActAgent
 from llama_index.llms.groq import Groq
@@ -34,6 +35,10 @@ class LLMCompilerAgent(BaseChainlitAgent):
 
         text_file = files[0]
         LLMCompilerAgent._df_path = text_file.path
+        
+        df = pd.read_csv(text_file.path)
+        
+        await cl.Message(f"{df.head().to_markdown()}\n\nFile uploaded successfully! Ask anything about the data!").send()
         return text_file.path
         
     
@@ -61,6 +66,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
         msg = cl.Message(content = "")
         for token in response.response_gen:
             await msg.stream_token(token)
-        await msg.send()                
+        await msg.send()
                 
     
