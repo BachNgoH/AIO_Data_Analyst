@@ -1,17 +1,5 @@
 <div align="center">
-  <style>
-    @media (prefers-color-scheme: dark) {
-      .logo-light { display: none; }
-      .logo-dark { display: block; }
-    }
-    @media (prefers-color-scheme: light) {
-      .logo-light { display: block; }
-      .logo-dark { display: none; }
-    }
-  </style>
-
-  <img src="./public/logo_dark.png" alt="AIO Data Analyst" width="500" class="logo-dark"/>
-  <img src="./public/logo_light.png" alt="AIO Data Analyst" width="500" class="logo-light"/>
+  <img src="./public/project_logo.png" alt="AIO Data Analyst" width="500" class="logo-light"/>
 </div>
 
 
