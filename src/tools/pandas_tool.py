@@ -5,9 +5,9 @@ from llama_index.llms.groq import Groq
 from src.utils.llm_utils import load_model
 from src.tools.data_analysis.tool import DataAnalysisToolSuite
 
-def load_pandas_tool():
+def load_pandas_tool(df_path="./data/train.csv"):
     llm = load_model()
-    data_df = pd.read_csv("./data/train.csv")
+    data_df = pd.read_csv(df_path)
     # query_engine = PandasQueryEngine(df=data_df, verbose=True, llm=llm)
     
     # return QueryEngineTool(
