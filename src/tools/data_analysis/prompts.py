@@ -38,3 +38,22 @@ DEFAULT_PANDAS_PROMPT = PromptTemplate(
     DEFAULT_PANDAS_TMPL, prompt_type=PromptType.PANDAS
 )
 
+
+
+DEFAULT_PANDAS_EXCEPTION_TMPL = (
+    "An error occurred while working with a pandas dataframe in Python.\n"
+    "The name of the dataframe is `df`.\n"
+    "This is the result of `print(df.head())`:\n"
+    "{df_str}\n\n"
+    "The following instruction caused an error:\n"
+    "{instruction_str}\n"
+    "Query: {query_str}\n\n"
+    "The error message was:\n"
+    "{error_msg}\n\n"
+    "Please provide a corrected version of the code to handle this error:\n\n"
+    "Corrected Expression:"
+)
+
+DEFAULT_PANDAS_EXCEPTION_PROMPT = PromptTemplate(
+    DEFAULT_PANDAS_EXCEPTION_TMPL, prompt_type=PromptType.PANDAS
+)
