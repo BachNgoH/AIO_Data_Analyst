@@ -1,7 +1,6 @@
 from typing import List
 import chainlit as cl
 import pandas as pd
-from llama_index.agent.llm_compiler import LLMCompilerAgentWorker
 from llama_index.core.agent import AgentRunner, ReActAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from dotenv import load_dotenv
