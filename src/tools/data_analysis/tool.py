@@ -54,13 +54,36 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n" f"\n{pandas_response_str}\n\n")
+            pandas_response_str = "```\n" + pandas_response_str + "\n```\n" \
+                if not pandas_response_str.startswith("```") else pandas_response_str
             run_sync(cl.Message(content=f"Generated Instructions:\n\n{pandas_response_str}\n").send())
 
-        response_metadata = {
-            "instruction_str": pandas_response_str,
-        }
 
-        return Response(response=pandas_response_str, metadata=response_metadata)
+        pandas_output = self._instruction_parser.parse(pandas_response_str)
+        if self._verbose:
+            logging.info(f"> Execution Output: {pandas_output}\n")
+            run_sync(cl.Message(
+                content=f"Execution Output: \n ```{pandas_output}```\n").send())
+
+
+        response_metadata = {
+            "pandas_instruction_str": pandas_response_str,
+            "raw_pandas_output": pandas_output,
+        }
+        
+        if self._synthesize_response:
+            response_str = str(
+                self._llm.predict(
+                    self._response_synthesis_prompt,
+                    query_str=prev_code,
+                    pandas_instructions=pandas_response_str,
+                    pandas_output=pandas_output,
+                )
+            )
+        else:
+            response_str = str(pandas_output)
+
+        return Response(response=response_str, metadata=response_metadata)
     
     
     def generate_code(self, query_str) -> dict:
@@ -84,6 +107,8 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n" f"\n{pandas_response_str}\n\n")
+            pandas_response_str = "```\n" + pandas_response_str + "\n```\n" \
+                if not pandas_response_str.startswith("```") else pandas_response_str
             run_sync(cl.Message(content=f"Generated Instructions:\n\n{pandas_response_str}\n").send())
 
         response_metadata = {
@@ -137,7 +162,10 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n" f"\n{pandas_response_str}\n\n")
-            run_sync(cl.Message(content=f"Generated Instructions:\n\n{pandas_response_str}\n").send())
+            pandas_response_str = "```\n" + pandas_response_str + "\n```\n" \
+                if not pandas_response_str.startswith("```") else pandas_response_str
+            
+            run_sync(cl.Message(content=f"Generated Instructions:\n\n {pandas_response_str}\n").send())
 
         pandas_output = self._instruction_parser.parse(pandas_response_str)
         if self._verbose:
@@ -194,8 +222,8 @@ class DataAnalysisToolSuite:
             await cl.Message(content=f"Execution Output: {pandas_output}\n").send()
 
         response_metadata = {
-            "pandas_instruction_str": pandas_response_str,
-            "raw_pandas_output": pandas_output,
+            "generated_code": pandas_response_str,
+            "output": pandas_output,
         }
         
         if self._synthesize_response:
@@ -208,7 +236,7 @@ class DataAnalysisToolSuite:
                 )
             )
         else:
-            response_str = str(pandas_output)
+            response_str = str(response_metadata)
 
         return Response(response=response_str, metadata=response_metadata)
 

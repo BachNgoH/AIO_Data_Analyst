@@ -17,7 +17,7 @@ class PandasAIAgent(BaseChainlitAgent):
     @classmethod
     async def aon_start(cls, *args, **kwargs):
         os.makedirs("charts", exist_ok=True)
-        user_defined_path = "/home/bachngo/Desktop/code/AIO_Projects/Pandasai_UI/charts"
+        user_defined_path = "./charts"
         
         if LLM_PROVIDER == "groq":
             llm = LocalLLM(
