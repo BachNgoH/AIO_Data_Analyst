@@ -7,7 +7,7 @@ DEFAULT_INSTRUCTION_STR = (
     "4. PRINT ONLY THE EXPRESSION.\n"
     "5. Do not quote the expression.\n"
     "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
-    # "7. When there are pandas data frame in the result, convert the head to markdown format"
+    "7. When there are pandas data frame in the result, convert the head to markdown format"
 )
 
 

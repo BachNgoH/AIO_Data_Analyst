@@ -116,9 +116,10 @@ class InstructionParser(ChainableOutputParser):
 
     def parse(self, output: str) -> Any:
         """Parse, validate, and correct errors programmatically."""
-        return self.default_output_processor(output, **self.output_kwargs)    
-        
-    def default_output_processor(self, output: str, timeout: int = 10, **output_kwargs: Any) -> str:
+        return self.default_output_processor(output, **self.output_kwargs)
+
+
+    def default_output_processor(self, output: str, timeout: int = 30, **output_kwargs: Any) -> str:
         """Process outputs in a default manner with a timeout."""
         if sys.version_info < (3, 9):
             logger.warning(
@@ -153,15 +154,70 @@ class InstructionParser(ChainableOutputParser):
                 # str(pd.dataframe) will truncate output by display.max_colwidth
                 # set width temporarily to extract more text
                 output_str = str(eval(module_end_str, global_vars, local_vars))
-                self.df = local_vars['df']
-                
+                self.df = local_vars['df']                
                 if show_plot() == Status.SHOW_PLOT_SUCCESS:
                     return "Plot displayed successfully to the user!"
-                
+
                 return output_str
 
             except Exception:
                 raise
+        except TimeoutException:
+            return "The execution timed out. Please try again with optimized code or increase the timeout limit."
+        except Exception as e:
+            err_string = (
+                "There was an error running the output as Python code. "
+                f"Error message: {e}"
+            )
+            traceback.print_exc()
+            return err_string
+        finally:
+            signal.alarm(0)  # Disable the alarm
+            
+            
+    def output_processor_v2(self, output: str, timeout: int = 10, **output_kwargs: Any) -> str:
+        """Process outputs in a default manner with a timeout."""
+        if sys.version_info < (3, 9):
+            logger.warning(
+                "Python version must be >= 3.9 in order to use "
+                "the default output processor, which executes "
+                "the Python query. Instead, we will return the "
+                "raw Python instructions as a string."
+            )
+            return output
+
+        local_vars = {"df": self.df, "sns": sns, "plt": plt, "np": np, "pd": pd}
+        global_vars = {}
+
+        output = parse_code_markdown(output, only_last=True)
+
+        try:
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout)
+
+            # Parse the code to separate the last expression
+            tree = ast.parse(output)
+            module = ast.Module(tree.body[:-1], type_ignores=[])
+            exec(ast.unparse(module), global_vars, local_vars)
+
+            # Execute the last expression and capture its output
+            module_end = ast.Module(tree.body[-1:], type_ignores=[])
+            exec(ast.unparse(module_end), global_vars, local_vars)
+            
+            self.df = local_vars['df']
+
+            try:
+                # Use the string representation of the last expression's result
+                output_str = str(local_vars.get('result', ''))
+
+                if show_plot() == Status.SHOW_PLOT_SUCCESS:
+                    return "Plot displayed successfully to the user!"
+
+                return output_str
+
+            except Exception as e:
+                raise e
+
         except TimeoutException:
             return "The execution timed out. Please try again with optimized code or increase the timeout limit."
         except Exception as e:
