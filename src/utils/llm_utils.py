@@ -4,8 +4,10 @@ from llama_index.llms.openai import OpenAI
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.gemini import Gemini
 from src.const import LLM_PROVIDER, MODEL_ID, TEMPERATURE
-
+from dotenv import load_dotenv
 import logging
+
+load_dotenv(override=True)
 
 def load_model():
     """
