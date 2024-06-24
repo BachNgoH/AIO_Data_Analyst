@@ -19,8 +19,9 @@ AIO Data Analyst is an all-in-one intelligent companion for analyzing your data.
 <!-- - **Custom Reports**: Create custom reports summarizing the key insights from your data. -->
 
 ## Demo
+[screen-capture.webm](https://github.com/BachNgoH/AIO_Data_Analyst/assets/81065083/6ab82aed-7a2e-4740-b72e-c4c2d5d1eb31)
 
-Coming soon!
+
 
 ## Getting Started
 To install this application, follow these steps:
