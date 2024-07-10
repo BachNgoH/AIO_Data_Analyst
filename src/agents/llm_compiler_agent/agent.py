@@ -60,7 +60,14 @@ class LLMCompilerAgent(BaseChainlitAgent):
             ).send()
 
         text_file = files[0]
-        LLMCompilerAgent._df_path = text_file.path
+        fixed_path = "./data/dataframe.csv"
+    
+        # Lưu file với tên và đường dẫn cố định
+        with open(fixed_path, 'wb') as f:
+            with open(text_file.path, 'rb') as temp_file:
+                f.write(temp_file.read())  # Đọc nội dung từ file tạm thời và ghi vào file cố định
+        
+        LLMCompilerAgent._df_path = fixed_path
         
         df = pd.read_csv(text_file.path)
         

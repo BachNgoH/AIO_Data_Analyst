@@ -7,6 +7,16 @@ import ast
 import re
 import traceback
 
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -131,8 +141,36 @@ class InstructionParser(ChainableOutputParser):
             )
             return output
 
-        local_vars = {"df": self.df, "sns": sns, "plt": plt, "np": np, "pd": pd}
-        global_vars = {}
+        local_vars = {
+            "df": self.df,
+            "pd": pd,
+            "np": np,
+            "plt": plt,
+            "sns": sns,
+            "train_test_split": train_test_split,
+            "StandardScaler": StandardScaler,
+            "SVC": SVC,
+            "LinearRegression": LinearRegression,
+            "mean_squared_error": mean_squared_error,
+            "accuracy_score": accuracy_score,
+            "classification_report": classification_report,
+            "confusion_matrix": confusion_matrix
+        }
+        global_vars = {
+            "df": self.df,
+            "pd": pd,
+            "np": np,
+            "plt": plt,
+            "sns": sns,
+            "train_test_split": train_test_split,
+            "StandardScaler": StandardScaler,
+            "SVC": SVC,
+            "LinearRegression": LinearRegression,
+            "mean_squared_error": mean_squared_error,
+            "accuracy_score": accuracy_score,
+            "classification_report": classification_report,
+            "confusion_matrix": confusion_matrix
+        }
 
         output = parse_code_markdown(output, only_last=True)
         
