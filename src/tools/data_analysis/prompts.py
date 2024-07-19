@@ -6,9 +6,11 @@ DEFAULT_INSTRUCTION_STR = (
     "3. The code should represent a solution to the query.\n"
     "4. PRINT ONLY THE EXPRESSION.\n"
     "5. Do not quote the expression.\n"
-    "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
+    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
     "7. Avoid code with "
     "8. When there are pandas data frame in the result, convert the head to markdown format"
+    "9. Don't need plt.show(), just have plt.figure() to create per"
+    "10. Do not import anything"
 )
 
 
@@ -61,10 +63,11 @@ DEFAULT_PANDAS_EXCEPTION_PROMPT = PromptTemplate(
 
 
 DEFAULT_SCIKIT_TMPL = (
-    "YOU DON'T NEED TO IMPORT ANYTHING"
+    # "YOU DON'T NEED TO IMPORT ANYTHING"
     "You are working with a pandas dataframe in Python.\n"
     "The name of the dataframe is `df`.\n"
     "This is the result of `print(df.head())`:\n"
+    "Include df = pd.read_csv('./data/dataframe.csv')"
     "{df_str}\n\n"
     "Follow these instructions:\n"
     "{instruction_str}\n"
@@ -84,7 +87,7 @@ DEFAULT_SCIKIT_TMPL = (
     "6. `plot_test_results`: Plots the test set results, showing the true labels versus the predicted labels.\n\n"
     "rememeber to print information such as accuracy or something you think it's necessary"
     "Assume the dataset is a Pandas DataFrame `df` with features and labels for training and testing."
-    "MUST NOT  IMPORT ANYTHING"
+    # "MUST NOT  IMPORT ANYTHING"
 )
 DEFAULT_SCIKIT_PROMPT = PromptTemplate(
     DEFAULT_SCIKIT_TMPL
@@ -96,11 +99,11 @@ DEFAULT_INSTRUCTION_SCIKIT_STR = (
     "Make sure to encapsulate each step in a function to maintain clean and modular code. For example: \n"
     "Just give me the python code, nothing include except python code"
     "The name of the dataframe is `df`, use directly df, don't need to load_data()"
-    "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
+    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
     "7. Avoid code with "
     "4. PRINT ONLY THE EXPRESSION.\n"
     "5. Do not quote the expression.\n"
-    "MUST NOT  IMPORT ANYTHING"
+    # "MUST NOT  IMPORT ANYTHING"
 )
 DEFAULT_EDA_TMPL = (
     "You are an expert data analyst working with a pandas dataframe in Python.\n"
@@ -142,7 +145,7 @@ DEFAULT_EDA_TMPL = (
     "After generating the code, provide a brief description of each plot and its purpose in the EDA process.\n"
     "Remember to handle any potential errors or edge cases in the data.\n"
     "Do not include any data preprocessing or analysis steps - focus solely on generating visualization code.\n"
-    "The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN, DO NOT IMPORT ANYTHING"
+    # "The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN, DO NOT IMPORT ANYTHING"
     "not use : Use of `hue` with `kind='reg'` is not currently supported"
 )
 DEFAULT_EDA_PROMPT = PromptTemplate(
@@ -152,7 +155,7 @@ DEFAULT_EDA_INSIGHT_TMPL = (
     "You are an AI data analysis expert. The dataframe is named `df`.\n"
     "IMPORTANT:\n"
     "- Do NOT code anything.\n"
-    "- The import of pandas as `pd`, numpy as `np`, and seaborn as `sns` is already done. Do NOT import anything again.\n"
+    # "- The import of pandas as `pd`, numpy as `np`, and seaborn as `sns` is already done. Do NOT import anything again.\n"
     "- `hue` with `kind='reg'` is not supported.\n\n"
     "Data Preview:\n"
     "This is the result of `print(df.head())`:\n"
@@ -191,28 +194,30 @@ DEFAULT_EDA_INSIGHT_PROMPT = PromptTemplate(
 DEFAULT_EDA_INSIGHT_CODE_TMPL = (
     "You are an AI data analysis expert. The dataframe is named `df`.\n"
     "IMPORTANT:\n"
-    "1. The code is properly indented and formatted."
-    "2. Handle any FutureWarnings, especially for the df.corr() method, by specifying numeric_only=True."
-    "- Do NOT use SHARPIO or any other strange library.\n"
-    "- The import of pandas as `pd`, numpy as `np`, and seaborn as `sns` is already done. Do NOT import anything again.\n"
-    "- `hue` with `kind='reg'` is not currently supported.\n\n"
-    "must include df = pd.read_csv('./data/dataframe.csv')"
+    "1. The code should be properly indented and formatted.\n"
+    "2. Handle any FutureWarnings, especially for the df.corr() method, by specifying numeric_only=True.\n"
+    "3. Do NOT use SHARPIO or any other strange library.\n"
+    # "4. The import of pandas as `pd`, numpy as `np`, matplotlib.pyplot as `plt`, and seaborn as `sns` is already done. DO NOT IMPORT ANYTHING AGAIN.\n"
+    "5. Use plt.switch_backend('agg') at the beginning of your code to use a non-interactive backend.\n"
+    "6. Save all plots as PNG image files in the './plots' directory."
+    "7. Do not use plt.show() or any interactive plotting functions.\n"
+    "8. Include df = pd.read_csv('./data/dataframe.csv') at the beginning of your code.\n"
     "Data Preview:\n"
     "This is the result of `print(df.head())`:\n"
     "{df_str}\n\n"
     "Follow these instructions:\n"
     "{instruction_str}"
-    "Generate and execute comprehensive EDA code based on the following query:\n"
+    "Generate comprehensive EDA code based on the following query:\n"
     "Query: {query_str}\n\n"
     "Your code should include:\n"
     "1. Descriptive statistics for numeric columns only.\n"
     "2. Correlation analysis for numeric columns only.\n"
     "3. Appropriate statistical tests for numeric columns only.\n"
-    "4. Visualizations to illustrate key findings.\n\n"
+    "4. Visualizations to illustrate key findings, saved as image files.\n\n"
     "The code must have print() statements to indicate which statistical property is being executed. These print statements must be clear and informative because the execution output will be used for further analysis by another model.\n"
     "Ensure that non-numeric columns are handled appropriately and do not cause errors in numerical operations.\n"
-    "Make sure about the indent of the code"
-    "Provide the generated EDA code:"
+    "Make sure about the indent of the code.\n"
+    "Provide the generated EDA code in a single Python code block."
 )
 DEFAULT_EDA_INSIGHT_CODE_PROMPT = PromptTemplate(
     DEFAULT_EDA_INSIGHT_CODE_TMPL

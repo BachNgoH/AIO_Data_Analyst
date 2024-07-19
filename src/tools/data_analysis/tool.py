@@ -1,5 +1,6 @@
 import logging
 import os
+import glob
 import io
 import contextlib
 import zipfile
@@ -253,7 +254,7 @@ class DataAnalysisToolSuite:
         "from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix\n"
          "df = pd.read_csv('./data/dataframe.csv')\n"
         )
-        full_scikit_code = import_statements + self.parse_code_markdown(scikit_response_str)
+        full_scikit_code = self.parse_code_markdown(scikit_response_str)
         
         # Save the code to a file after execution
         file_path = self.save_code_to_file(full_scikit_code, 'model.py')
@@ -375,10 +376,23 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
     #             {"file_path": zip_file_path, "display_name": "Generated Scikit Code.zip"},
     #         ]
     #     ).send()
+    def extract_first_python_code(self, text: str) -> str:
+        """Extract the first Python code block from the text."""
+        pattern = r'```python\s*(.*?)\s*```'
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            return match.group(1)
+        return ""
+    def clear_plots_folder(self) -> None:
+        """Clear the plots folder."""
+        plots_dir = './plots'
+        files = glob.glob(os.path.join(plots_dir, '*'))
+        for f in files:
+            os.remove(f)
     def generate_eda_insights(self, query_str: str) -> Response:
         """Generate, execute EDA code, and provide insights based on the results."""
         context = self._get_table_context()
-        
+        self.clear_plots_folder()
         # Generate EDA code
         eda_code = self._llm.predict(
             self._eda_insight_code_prompt,
@@ -386,23 +400,32 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
             query_str=query_str,
             instruction_str=self._instruction_str_eda,
         )
-        
+        eda_code = self.extract_first_python_code(eda_code)
         if self._verbose:
             logging.info(f"> EDA Code Instructions:\n{eda_code}\n")
-            run_sync(cl.Message(content=f"Generated EDA Instructions:\n```python\n{eda_code}\n```").send())
-        
+            run_sync(cl.Message(content=f"Generated EDA Instructions:\n```\n{eda_code}\n```").send())
+
         # Parse and execute the generated code
         eda_output = self._instruction_parser.parse(eda_code)
+         # Tìm tất cả các file ảnh PNG trong thư mục './plots'
+        plots_dir = './plots'
+        image_files = glob.glob(os.path.join(plots_dir, '*.png'))
         
+        # Hiển thị các ảnh lên Chainlit, mỗi ảnh trên một dòng riêng
+        if image_files:
+            for image_file in image_files:
+                run_sync(cl.Message(content="", elements=[
+                    cl.Image(path=image_file, name="plot", display="inline", size="large")
+                ]).send())
         if self._verbose:
             logging.info(f"> Execution Output: {eda_output}\n")
-            run_sync(cl.Message(content=f"Execution Output: \n```\n{eda_output}\n```\n").send())
-        
+            run_sync(cl.Message(content=f"Execution Output: \n{eda_output}\n").send())
+
         response_metadata = {
             "eda_instruction_str": eda_code,
             "raw_eda_output": eda_output,
         }
-        
+
         # Generate insights based on the execution results
         insights = self._llm.predict(
             self._eda_insight_prompt,
@@ -411,23 +434,114 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
             eda_code=eda_code,
             eda_output=eda_output
         )
+        if self._verbose:
+            logging.info(f"> Eda Output: {insights}\n")
+            run_sync(cl.Message(content=f"Eda Output: \n{insights}\n").send())
         response_str = str(insights)
-        
-        # Prepend import statements to the generated EDA code
-        import_statements = (
-        "import pandas as pd\n"
-        "import numpy as np\n"
-        "import matplotlib.pyplot as plt\n"
-        "import seaborn as sns\n"
-        )
-        full_eda_code = import_statements + eda_code
-        
+
+        full_eda_code = eda_code
+
         # Save the code to a file after execution
         file_path = self.save_code_to_file(full_eda_code, 'eda.py')
-        
+
         # Zip the saved file
         zip_path = self.zip_code_file(file_path, 'eda.zip')
         return Response(response=response_str, metadata=response_metadata)
+    async def generate_eda_insights_async(self, query_str: str) -> Response:
+        """Generate, execute EDA code, and provide insights based on the results asynchronously."""
+        context = self._get_table_context()
+
+        # Generate EDA code
+        eda_code = await self._llm.apredict(
+            self._eda_insight_code_prompt,
+            df_str=context,
+            query_str=query_str,
+            instruction_str=self._instruction_str_eda,
+        )
+        eda_code = self.extract_first_python_code(eda_code)
+        if self._verbose:
+            logging.info(f"> EDA Code Instructions:\n{eda_code}\n")
+            await cl.Message(content=f"Generated EDA Instructions:\n```python\n{eda_code}\n```").send()
+
+        # Parse and execute the generated code
+        eda_output = await cl.make_async(self._instruction_parser.parse)(eda_code)
+
+        # Display plots
+        plots_dir = './plots'
+        image_files = glob.glob(os.path.join(plots_dir, '*.png'))
+        if image_files:
+            for image_file in image_files:
+                await cl.Message(content="", elements=[
+                    cl.Image(path=image_file, name="plot", display="inline", size="large")
+                ]).send()
+
+        if self._verbose:
+            logging.info(f"> Execution Output: {eda_output}\n")
+            await cl.Message(content=f"Execution Output: \n{eda_output}\n").send()
+
+        response_metadata = {
+            "eda_instruction_str": eda_code,
+            "raw_eda_output": eda_output,
+        }
+
+        # Generate insights based on the execution results
+        insights = await self._llm.apredict(
+            self._eda_insight_prompt,
+            df_str=context,
+            query_str=query_str,
+            eda_code=eda_code,
+            eda_output=eda_output
+        )
+        if self._verbose:
+            logging.info(f"> Eda Output: {insights}\n")
+            await cl.Message(content=f"Eda Output: \n{insights}\n").send()
+        response_str = str(insights)
+
+        # Prepend import statements and save the code
+        import_statements = (
+            "import pandas as pd\n"
+            "import numpy as np\n"
+            "import matplotlib.pyplot as plt\n"
+            "import seaborn as sns\n"
+        )
+        full_eda_code = import_statements + eda_code
+        file_path = await cl.make_async(self.save_code_to_file)(full_eda_code, 'eda.py')
+        zip_path = await cl.make_async(self.zip_code_file)(file_path, 'eda.zip')
+
+        return Response(response=response_str, metadata=response_metadata)
+    def full_analysis(self, query_str: str) -> Response:
+        """Perform full analysis including EDA insights and Scikit-learn model execution."""
+        
+        # Step 1: Generate EDA insights
+        eda_response = self.generate_eda_insights(query_str)
+        
+        # Step 2: Generate and execute Scikit-learn code
+        scikit_response = self.generate_and_execute_scikit_code(query_str)
+        
+        # Combine the responses
+        full_response = f"## EDA Insights\n\n{eda_response.response}\n\n"
+        full_response += f"## Scikit-learn Model Analysis\n\n{scikit_response.response}"
+        
+        # Combine metadata
+        combined_metadata = {
+            "eda_metadata": eda_response.metadata,
+            "scikit_metadata": scikit_response.metadata
+        }
+        
+        # Display plots from EDA
+        plots_dir = './plots'
+        image_files = glob.glob(os.path.join(plots_dir, '*.png'))
+        if image_files:
+            for image_file in image_files:
+                cl.Message(content="", elements=[
+                    cl.Image(path=image_file, name="plot", display="inline", size="large")
+                ]).send()
+        
+        # Send the formatted response
+        cl.Message(content=full_response).send()
+        
+        return Response(response=full_response, metadata=combined_metadata)
+
     def get_tools(self):
         """Get tools."""
         return [
@@ -438,4 +552,6 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
             FunctionTool.from_defaults(fn=self.retry_generate_code),
             FunctionTool.from_defaults(fn=self.generate_and_execute_scikit_code),
             FunctionTool.from_defaults(fn=self.generate_eda_insights,description="generate insight, generate eda"),
+            FunctionTool.from_defaults(fn=self.generate_eda_insights_async, description="generate insight, generate eda (async)"),
+            FunctionTool.from_defaults(fn=self.full_analysis, description="perform full analysis including EDA and machine learning modeling"),
         ]

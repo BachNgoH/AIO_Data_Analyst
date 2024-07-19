@@ -8,7 +8,7 @@ from src.agents.base import BaseChainlitAgent
 from src.utils.llm_utils import load_model
 from .prompts import WELCOME_MESSAGE, BASE_SYSTEM_PROMPT, SYSTEM_PROMPT
 from src.const import MAX_ITERATIONS
-
+import re
 load_dotenv(override=True)
 
 class LLMCompilerAgent(BaseChainlitAgent):
@@ -60,14 +60,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
             ).send()
 
         text_file = files[0]
-        fixed_path = "./data/dataframe.csv"
-    
-        # Lưu file với tên và đường dẫn cố định
-        with open(fixed_path, 'wb') as f:
-            with open(text_file.path, 'rb') as temp_file:
-                f.write(temp_file.read())  # Đọc nội dung từ file tạm thời và ghi vào file cố định
-        
-        LLMCompilerAgent._df_path = fixed_path
+        LLMCompilerAgent._df_path = text_file.path
         
         df = pd.read_csv(text_file.path)
         
@@ -97,26 +90,45 @@ class LLMCompilerAgent(BaseChainlitAgent):
     @classmethod
     async def aon_message(cls, message: cl.Message, *args, **kwargs):
         
-        
+        # Lấy lịch sử chat từ phiên người dùng
         chat_history = LLMCompilerAgent._get_chat_history()
+        # Xây dựng lại lịch sử tin nhắn
         LLMCompilerAgent._construct_message_history(chat_history)
 
+        # Thêm tin nhắn của người dùng vào lịch sử
         chat_history.append({
             "content": message.content,
             "role": MessageRole.USER
         })
         
+        # Nội dung tin nhắn từ người dùng
         content = message.content
+        # Nhận phản hồi từ agent
         response = LLMCompilerAgent._agent.stream_chat(content)
-        msg = cl.Message(content = "")
+        
+        # Khởi tạo tin nhắn phản hồi từ agent
+        response_content = ""
+        
+        # Xử lý từng token trong phản hồi
         for token in response.response_gen:
-            await msg.stream_token(token)
+            response_content += token
+        
+        # Sử dụng regex để lấy phần sau "Answer: "
+        match = re.search(r'Answer: (.*)', response_content)
+        if match:
+            response_content = match.group(1).strip()
+        
+        # Gửi tin nhắn phản hồi sau khi nhận đủ toàn bộ phản hồi từ agent
+        msg = cl.Message(content=response_content)
         await msg.send()
         
+        # Thêm phản hồi của agent vào lịch sử
         chat_history.append({
-            "content": msg.content,
+            "content": response_content,
             "role": MessageRole.ASSISTANT
         })
+        
+        # Cập nhật lại lịch sử chat trong phiên người dùng
         LLMCompilerAgent._set_chat_history(chat_history)
-                
+                    
     

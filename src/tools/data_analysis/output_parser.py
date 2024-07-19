@@ -6,25 +6,17 @@ import sys
 import ast
 import re
 import traceback
-
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix
+import concurrent.futures
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib
 import chainlit as cl
 from enum import Enum
+import importlib
 from typing import Any, Dict, Optional, List
-
+from scipy import stats
 from chainlit import run_sync
 # from llama_index.experimental.exec_utils import safe_eval, safe_exec
 from llama_index.core.output_parsers.base import ChainableOutputParser
@@ -77,61 +69,41 @@ def parse_code_markdown(text: str, only_last: bool) -> List[str]:
     return code
 
 def show_plot() -> str:
+    plt = importlib.import_module('matplotlib.pyplot')
     try:
-        # Ensure there's a plot to display
         if not plt.get_fignums():
             return Status.NO_PLOT
         
-        # Create an in-memory bytes buffer for the plot image
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
         
-        # Clear the plot
         plt.close()
         
-        # Display the plot image
         image = cl.Image(
             name="plot", 
             size="large", 
             display="inline", 
             content=buffer.getvalue())
         
-        run_sync(cl.Message(
-            content="",
-            elements=[image]
-        ).send())
-        
         return Status.SHOW_PLOT_SUCCESS
     except Exception as e:
         return Status.SHOW_PLOT_FAILED
-
 
 def timeout_handler(signum, frame):
     raise TimeoutException("Timed out!")
 
 class InstructionParser(ChainableOutputParser):
-    """instruction parser.
-
-    This 'output parser' takes in pandas instructions (in Python code) and
-    executes them to return an output.
-
-    """
-
     def __init__(
-        self, df: pd.DataFrame, output_kwargs: Optional[Dict[str, Any]] = None
+        self, df: Any, output_kwargs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Initialize params."""
         self.df = df
         self.output_kwargs = output_kwargs or {}
 
     def parse(self, output: str) -> Any:
-        """Parse, validate, and correct errors programmatically."""
         return self.default_output_processor(output, **self.output_kwargs)
 
-
     def default_output_processor(self, output: str, timeout: int = 30, **output_kwargs: Any) -> str:
-        """Process outputs in a default manner with a timeout."""
         if sys.version_info < (3, 9):
             logger.warning(
                 "Python version must be >= 3.9 in order to use "
@@ -141,76 +113,28 @@ class InstructionParser(ChainableOutputParser):
             )
             return output
 
-        local_vars = {
-            "df": self.df,
-            "pd": pd,
-            "np": np,
-            "plt": plt,
-            "sns": sns,
-            "train_test_split": train_test_split,
-            "StandardScaler": StandardScaler,
-            "SVC": SVC,
-            "LinearRegression": LinearRegression,
-            "mean_squared_error": mean_squared_error,
-            "accuracy_score": accuracy_score,
-            "classification_report": classification_report,
-            "confusion_matrix": confusion_matrix
-        }
-        global_vars = {
-            "df": self.df,
-            "pd": pd,
-            "np": np,
-            "plt": plt,
-            "sns": sns,
-            "train_test_split": train_test_split,
-            "StandardScaler": StandardScaler,
-            "SVC": SVC,
-            "LinearRegression": LinearRegression,
-            "mean_squared_error": mean_squared_error,
-            "accuracy_score": accuracy_score,
-            "classification_report": classification_report,
-            "confusion_matrix": confusion_matrix
-        }
-
         output = parse_code_markdown(output, only_last=True)
         
-        # Redirect standard output to capture print statements
         old_stdout = sys.stdout
         sys.stdout = new_stdout = io.StringIO()
         
         try:
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(self._execute_code, output)
+                result = future.result(timeout=timeout)
             
-            tree = ast.parse(output)
-            module = ast.Module(tree.body[:-1], type_ignores=[])
-            exec(ast.unparse(module), {}, local_vars)  # type: ignore
-            module_end = ast.Module(tree.body[-1:], type_ignores=[])
-            module_end_str = ast.unparse(module_end)  # type: ignore
+            output_str = result
+            if show_plot() == Status.SHOW_PLOT_SUCCESS:
+                logging.info("Plot displayed successfully!")
+                output_str += "\n Plot displayed successfully!" 
             
-            if module_end_str.strip("'\"") != module_end_str:
-                # if there's leading/trailing quotes, then we need to eval
-                # string to get the actual expression
-                module_end_str = eval(module_end_str, global_vars, local_vars)
+            printed_output = new_stdout.getvalue()
+            if printed_output:
+                output_str = printed_output + "\n" + output_str
             
-            try:
-                # str(pd.dataframe) will truncate output by display.max_colwidth
-                # set width temporarily to extract more text
-                output_str = str(eval(module_end_str, global_vars, local_vars))
-                self.df = local_vars['df']      
-                if show_plot() == Status.SHOW_PLOT_SUCCESS:
-                    logging.info("Plot displayed successfully!")
-                    output_str += "\n Plot displayed successfully!" 
-                
-                printed_output = new_stdout.getvalue()
-                if printed_output:
-                    output_str = printed_output + "\n" + output_str
-                
-                return output_str
+            return output_str
 
-            except Exception:
-                raise
-        except TimeoutException:
+        except concurrent.futures.TimeoutError:
             return "The execution timed out. Please try again with optimized code or increase the timeout limit."
         except Exception as e:
             err_string = (
@@ -220,5 +144,47 @@ class InstructionParser(ChainableOutputParser):
             traceback.print_exc()
             return err_string
         finally:
-            sys.stdout = old_stdout  # Restore standard output
-            signal.alarm(0)  # Disable the alarm
+            sys.stdout = old_stdout
+
+    def _execute_code(self, code: str) -> str:
+        try:
+            # Create a separate execution environment
+            exec_globals = {'df': self.df}
+            exec_locals = {}
+
+            # Parse the code to find import statements
+            tree = ast.parse(code)
+            imports = [node for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom))]
+
+            # Import necessary libraries
+            for import_stmt in imports:
+                if isinstance(import_stmt, ast.Import):
+                    for alias in import_stmt.names:
+                        module = importlib.import_module(alias.name)
+                        exec_globals[alias.asname or alias.name] = module
+                elif isinstance(import_stmt, ast.ImportFrom):
+                    module = importlib.import_module(import_stmt.module)
+                    for alias in import_stmt.names:
+                        if alias.name == '*':
+                            exec_globals.update(module.__dict__)
+                        else:
+                            exec_globals[alias.asname or alias.name] = getattr(module, alias.name)
+
+            # Execute the code
+            exec(code, exec_globals, exec_locals)
+            
+            # Update self.df if it was modified in the executed code
+            self.df = exec_globals.get('df', self.df)
+            
+            # Handle matplotlib plots if any
+            plt = exec_globals.get('plt')
+            if plt and plt.get_fignums():
+                for i, fig in enumerate(plt.get_fignums()):
+                    plt.figure(fig).savefig(f'plot_{i}.png')
+                plt.close('all')
+            
+            # Return the result
+            result = exec_locals.get('result', 'Code executed successfully')
+            return str(result)
+        except Exception as e:
+            return f"Error executing code: {str(e)}"
