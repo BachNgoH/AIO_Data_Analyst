@@ -18,7 +18,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
     _AGENT_IDENTIFIER: str = "LLMAnalyzerAgent"
     _HISTORY_IDENTIFIER: str = f"{_AGENT_IDENTIFIER}_chat_history"
     
-    
     @staticmethod
     def _get_chat_history() -> list[dict]:
         chat_history = cl.user_session.get(key=LLMCompilerAgent._HISTORY_IDENTIFIER, default=[])
@@ -66,7 +65,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
         
         await cl.Message(f"{df.head().to_markdown()}\n\nFile uploaded successfully! Ask anything about the data!").send()
         return text_file.path
-        
     
     @classmethod
     async def aon_start(cls, *args, **kwargs):
@@ -77,10 +75,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
         await LLMCompilerAgent._ask_file_handler()
         tools = LLMCompilerAgent._init_tools()
 
-        # agent_worker = LLMCompilerAgentWorker.from_tools(
-        #     tools, llm=llm, verbose=True
-        # )
-        # agent = AgentRunner(agent_worker)
         agent = ReActAgent.from_tools(
             tools, llm=llm, verbose=True, max_iterations=MAX_ITERATIONS
         )
@@ -89,22 +83,22 @@ class LLMCompilerAgent(BaseChainlitAgent):
     
     @classmethod
     async def aon_message(cls, message: cl.Message, *args, **kwargs):
-        
-        # Lấy lịch sử chat từ phiên người dùng
         chat_history = LLMCompilerAgent._get_chat_history()
-        # Xây dựng lại lịch sử tin nhắn
-        LLMCompilerAgent._construct_message_history(chat_history)
-
-        # Thêm tin nhắn của người dùng vào lịch sử
         chat_history.append({
             "content": message.content,
             "role": MessageRole.USER
         })
         
+        LLMCompilerAgent._construct_message_history(chat_history)
+
         # Nội dung tin nhắn từ người dùng
         content = message.content
+        
+        # Thêm yêu cầu về accuracy vào prompt
+        content_with_accuracy = f"{content}\n\nPlease also provide an assessment of the accuracy of this answer."
+        
         # Nhận phản hồi từ agent
-        response = LLMCompilerAgent._agent.stream_chat(content)
+        response = LLMCompilerAgent._agent.stream_chat(content_with_accuracy)
         
         # Khởi tạo tin nhắn phản hồi từ agent
         response_content = ""
@@ -113,22 +107,25 @@ class LLMCompilerAgent(BaseChainlitAgent):
         for token in response.response_gen:
             response_content += token
         
-        # Sử dụng regex để lấy phần sau "Answer: "
-        match = re.search(r'Answer: (.*)', response_content)
+        # Tách phần trả lời chính và đánh giá accuracy
+        parts = response_content.split("Accuracy assessment:", 1)
+        main_answer = parts[0].strip()
+        accuracy_assessment = parts[1].strip() if len(parts) > 1 else "No accuracy assessment provided."
+
+        # Sử dụng regex để lấy phần sau "Answer: " trong main_answer
+        match = re.search(r'Answer: (.*)', main_answer, re.DOTALL)
         if match:
-            response_content = match.group(1).strip()
+            main_answer = match.group(1).strip()
         
         # Gửi tin nhắn phản hồi sau khi nhận đủ toàn bộ phản hồi từ agent
-        msg = cl.Message(content=response_content)
+        msg = cl.Message(content=f"{main_answer}")
         await msg.send()
         
         # Thêm phản hồi của agent vào lịch sử
         chat_history.append({
-            "content": response_content,
+            "content": f"{main_answer}\n\nAccuracy assessment: {accuracy_assessment}",
             "role": MessageRole.ASSISTANT
         })
         
         # Cập nhật lại lịch sử chat trong phiên người dùng
         LLMCompilerAgent._set_chat_history(chat_history)
-                    
-    

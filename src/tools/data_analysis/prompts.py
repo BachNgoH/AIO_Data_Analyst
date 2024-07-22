@@ -77,6 +77,7 @@ DEFAULT_SCIKIT_TMPL = (
     "def split_data: return X_train, X_test, y_train, y_test.\n"
     "def train_model(model, X_train, y_train): return trained_model.\n\n"
     "Generate a well-structured machine learning code using the Scikit-learn library. "
+     "- Save all plots as PNG image files in the './plots' directory.\n"
     "The code should include the following functions:\n\n"
     "Base of the 'df' provide, you choose the suitable target"
     "1. Use the dataframe `df` directly without loading it.\n\n"

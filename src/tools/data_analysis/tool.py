@@ -232,61 +232,69 @@ class DataAnalysisToolSuite:
             return ""
     def generate_and_execute_scikit_code(self, query_str: str) -> Response:
         """Generate and execute Scikit-learn code for a given query."""
-        scikit_response_str = self._generate_scikit_code(query_str)
-        executable_code = self._instruction_parser.parse(scikit_response_str)
-        
-        # Print the parsed code for debugging
-        logging.info(f"Parsed Code:\n{executable_code}")
-        print(f"Parsed Code:\n{executable_code}")
-        
-        # Prepend import statements to the generated Scikit-learn code
-        import_statements = (
-        "import pandas as pd\n"
-        "import numpy as np\n"
-        "import matplotlib.pyplot as plt\n"
-        "import seaborn as sns\n"
-        "from sklearn.model_selection import train_test_split\n"
-        "from sklearn.preprocessing import StandardScaler\n"
-        "from sklearn.svm import SVC\n"
-        "from sklearn.linear_model import LinearRegression, LogisticRegression\n"
-        "from sklearn.tree import DecisionTreeClassifier\n"
-        "from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier\n"
-        "from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix\n"
-         "df = pd.read_csv('./data/dataframe.csv')\n"
-        )
-        full_scikit_code = self.parse_code_markdown(scikit_response_str)
-        
-        # Save the code to a file after execution
-        file_path = self.save_code_to_file(full_scikit_code, 'model.py')
-        
-        # Zip the saved file
-        zip_path = self.zip_code_file(file_path, 'model.zip')
-        
-        # Combine the code and its output
-        full_response = f"Code executed successfully. Output:\n\n{executable_code}"
-        
-        response_metadata = {
-            "scikit_instruction_str": scikit_response_str,
-            "executed_code": executable_code
-        }
-        
-        return Response(response=full_response, metadata=response_metadata)
-    def _generate_scikit_code(self, query_str: str) -> str:
+        # Clear the plots folder
+        self.clear_plots_folder()
+
         context = self._get_table_context()
+        
+        # Generate Scikit-learn code
         scikit_response_str = self._llm.predict(
             self._scikit_prompt,
             df_str=context,
             query_str=query_str,
             instruction_str=self._instruction_str_scikit,
         )
+        scikit_code = self.extract_first_python_code(scikit_response_str)
+        
+        if self._verbose:
+            logging.info(f"> Scikit-learn Code Instructions:\n{scikit_code}\n")
+            run_sync(cl.Message(content=f"Generated Scikit-learn Instructions:\n```python\n{scikit_code}\n```").send())
+
+        # Parse and execute the generated code
+        executable_output = self._instruction_parser.parse(scikit_code)
+
+        # Display plots
+        plots_dir = './plots'
+        image_files = glob.glob(os.path.join(plots_dir, '*.png'))
+        if image_files:
+            for image_file in image_files:
+                run_sync(cl.Message(content="", elements=[
+                    cl.Image(path=image_file, name="plot", display="inline", size="large")
+                ]).send())
 
         if self._verbose:
-            logging.info(f"> Scikit Code Instructions:\n{scikit_response_str}\n")
-            scikit_response_str = "```\n" + scikit_response_str + "\n```\n" if not scikit_response_str.startswith(
-                "```") else scikit_response_str
-            run_sync(cl.Message(content=f"Generated Scikit Instructions:\n\n{scikit_response_str}\n").send())
+            logging.info(f"> Execution Output: {executable_output}\n")
+            run_sync(cl.Message(content=f"Execution Output: \n{executable_output}\n").send())
 
-        return scikit_response_str
+        response_metadata = {
+            "scikit_instruction_str": scikit_code,
+            "raw_scikit_output": executable_output,
+        }
+
+        # Prepend import statements and save the code
+        import_statements = (
+            "import pandas as pd\n"
+            "import numpy as np\n"
+            "import matplotlib.pyplot as plt\n"
+            "import seaborn as sns\n"
+            "from sklearn.model_selection import train_test_split\n"
+            "from sklearn.preprocessing import StandardScaler\n"
+            "from sklearn.svm import SVC\n"
+            "from sklearn.linear_model import LinearRegression, LogisticRegression\n"
+            "from sklearn.tree import DecisionTreeClassifier\n"
+            "from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier\n"
+            "from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix\n"
+            "df = pd.read_csv('./data/dataframe.csv')\n"
+        )
+        full_scikit_code = import_statements + scikit_code
+
+        # Save the code to a file after execution
+        file_path = self.save_code_to_file(full_scikit_code, 'model.py')
+
+        # Zip the saved file
+        zip_path = self.zip_code_file(file_path, 'model.zip')
+
+        return Response(response=str(executable_output), metadata=response_metadata)
 
     async def _generate_scikit_code_async(self, query_str: str) -> str:
         context = self._get_table_context()
