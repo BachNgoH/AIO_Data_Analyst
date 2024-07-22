@@ -8,7 +8,7 @@ from src.agents.base import BaseChainlitAgent
 from src.utils.llm_utils import load_model
 from .prompts import WELCOME_MESSAGE, BASE_SYSTEM_PROMPT, SYSTEM_PROMPT
 from src.const import MAX_ITERATIONS
-
+import re
 load_dotenv(override=True)
 
 class LLMCompilerAgent(BaseChainlitAgent):
@@ -17,7 +17,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
     _df_path: str
     _AGENT_IDENTIFIER: str = "LLMAnalyzerAgent"
     _HISTORY_IDENTIFIER: str = f"{_AGENT_IDENTIFIER}_chat_history"
-    
     
     @staticmethod
     def _get_chat_history() -> list[dict]:
@@ -66,7 +65,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
         
         await cl.Message(f"{df.head().to_markdown()}\n\nFile uploaded successfully! Ask anything about the data!").send()
         return text_file.path
-        
     
     @classmethod
     async def aon_start(cls, *args, **kwargs):
@@ -77,10 +75,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
         await LLMCompilerAgent._ask_file_handler()
         tools = LLMCompilerAgent._init_tools()
 
-        # agent_worker = LLMCompilerAgentWorker.from_tools(
-        #     tools, llm=llm, verbose=True
-        # )
-        # agent = AgentRunner(agent_worker)
         agent = ReActAgent.from_tools(
             tools, llm=llm, verbose=True, max_iterations=MAX_ITERATIONS
         )
@@ -89,27 +83,49 @@ class LLMCompilerAgent(BaseChainlitAgent):
     
     @classmethod
     async def aon_message(cls, message: cl.Message, *args, **kwargs):
-        
-        
         chat_history = LLMCompilerAgent._get_chat_history()
-        LLMCompilerAgent._construct_message_history(chat_history)
-
         chat_history.append({
             "content": message.content,
             "role": MessageRole.USER
         })
         
+        LLMCompilerAgent._construct_message_history(chat_history)
+
+        # Nội dung tin nhắn từ người dùng
         content = message.content
-        response = LLMCompilerAgent._agent.stream_chat(content)
-        msg = cl.Message(content = "")
+        
+        # Thêm yêu cầu về accuracy vào prompt
+        content_with_accuracy = f"{content}\n\nPlease also provide an assessment of the accuracy of this answer."
+        
+        # Nhận phản hồi từ agent
+        response = LLMCompilerAgent._agent.stream_chat(content_with_accuracy)
+        
+        # Khởi tạo tin nhắn phản hồi từ agent
+        response_content = ""
+        
+        # Xử lý từng token trong phản hồi
         for token in response.response_gen:
-            await msg.stream_token(token)
+            response_content += token
+        
+        # Tách phần trả lời chính và đánh giá accuracy
+        parts = response_content.split("Accuracy assessment:", 1)
+        main_answer = parts[0].strip()
+        accuracy_assessment = parts[1].strip() if len(parts) > 1 else "No accuracy assessment provided."
+
+        # Sử dụng regex để lấy phần sau "Answer: " trong main_answer
+        match = re.search(r'Answer: (.*)', main_answer, re.DOTALL)
+        if match:
+            main_answer = match.group(1).strip()
+        
+        # Gửi tin nhắn phản hồi sau khi nhận đủ toàn bộ phản hồi từ agent
+        msg = cl.Message(content=f"{main_answer}")
         await msg.send()
         
+        # Thêm phản hồi của agent vào lịch sử
         chat_history.append({
-            "content": msg.content,
+            "content": f"{main_answer}\n\nAccuracy assessment: {accuracy_assessment}",
             "role": MessageRole.ASSISTANT
         })
+        
+        # Cập nhật lại lịch sử chat trong phiên người dùng
         LLMCompilerAgent._set_chat_history(chat_history)
-                
-    
