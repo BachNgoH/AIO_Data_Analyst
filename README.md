@@ -20,7 +20,7 @@ AIO Data Analyst is an all-in-one intelligent companion for analyzing your data.
 
 ## Demo
 [screen-capture.webm](https://github.com/BachNgoH/AIO_Data_Analyst/assets/81065083/6ab82aed-7a2e-4740-b72e-c4c2d5d1eb31)
-
+[full-analysis](https://youtu.be/7tP1WGy5BM8)
 
 
 ## Getting Started
