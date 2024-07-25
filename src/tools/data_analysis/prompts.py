@@ -12,11 +12,14 @@ DEFAULT_INSTRUCTION_STR = (
     "9. Use appropriate whitespace around operators and after commas.\n"
     "10. Follow PEP 8 style guidelines for naming conventions and code layout.\n"
     "11. The variable `df` is already defined, and shouldn't be redefined in the code.\n"
+    "12. For matplotlib plots, use plt.figure() to create figures, but don't call plt.show().\n"
+    "13. Avoid generating too long code that make execution time too long.\n"
+    "14. Do not include any import statements in the code.\n"
 )
+
     # "8. When working with pandas DataFrames, use .head().to_markdown() for display.\n"
 
     # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
-    # "9. For matplotlib plots, use plt.figure() to create figures, but don't call plt.show().\n"
 
 # **NOTE**: newer version of sql query engine
 DEFAULT_RESPONSE_SYNTHESIS_PROMPT_TMPL = (

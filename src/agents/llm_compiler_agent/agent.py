@@ -101,35 +101,37 @@ class LLMCompilerAgent(BaseChainlitAgent):
         content = message.content
         
         # Thêm yêu cầu về accuracy vào prompt
-        content_with_accuracy = f"{content}\n\nPlease also provide an assessment of the accuracy of this answer."
+        # content_with_accuracy = f"{content}\n\nPlease also provide an assessment of the accuracy of this answer."
         
         # Nhận phản hồi từ agent
-        response = LLMCompilerAgent._agent.stream_chat(content_with_accuracy)
+        response = LLMCompilerAgent._agent.stream_chat(content)
         
         # Khởi tạo tin nhắn phản hồi từ agent
         response_content = ""
         
+        msg = cl.Message(content="")
+        
         # Xử lý từng token trong phản hồi
         for token in response.response_gen:
             response_content += token
-        
-        # Tách phần trả lời chính và đánh giá accuracy
-        parts = response_content.split("Accuracy assessment:", 1)
-        main_answer = parts[0].strip()
-        accuracy_assessment = parts[1].strip() if len(parts) > 1 else "No accuracy assessment provided."
-
-        # Sử dụng regex để lấy phần sau "Answer: " trong main_answer
-        match = re.search(r'Answer: (.*)', main_answer, re.DOTALL)
-        if match:
-            main_answer = match.group(1).strip()
-        
-        # Gửi tin nhắn phản hồi sau khi nhận đủ toàn bộ phản hồi từ agent
-        msg = cl.Message(content=f"{main_answer}")
+            await msg.stream_token(token)
+            
         await msg.send()
         
+        # # Tách phần trả lời chính và đánh giá accuracy
+        # parts = response_content.split("Accuracy assessment:", 1)
+        # main_answer = parts[0].strip()
+        # accuracy_assessment = parts[1].strip() if len(parts) > 1 else "No accuracy assessment provided."
+
+        # # Sử dụng regex để lấy phần sau "Answer: " trong main_answer
+        # match = re.search(r'Answer: (.*)', main_answer, re.DOTALL)
+        # if match:
+        #     main_answer = match.group(1).strip()
+                
         # Thêm phản hồi của agent vào lịch sử
         chat_history.append({
-            "content": f"{main_answer}\n\nAccuracy assessment: {accuracy_assessment}",
+            # "content": f"{main_answer}\n\nAccuracy assessment: {accuracy_assessment}",
+            "content": response_content,
             "role": MessageRole.ASSISTANT
         })
         
