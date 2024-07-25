@@ -1,9 +1,10 @@
 from typing import List
 import chainlit as cl
 import pandas as pd
-from llama_index.core.agent import AgentRunner, ReActAgent
-from llama_index.agent.openai import OpenAIAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.core.agent import AgentRunner, ReActAgent
+
 from dotenv import load_dotenv
 from src.agents.base import BaseChainlitAgent
 from src.utils.llm_utils import load_model
