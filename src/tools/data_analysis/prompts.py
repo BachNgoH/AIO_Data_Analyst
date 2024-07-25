@@ -14,6 +14,7 @@ DEFAULT_INSTRUCTION_STR = (
     "11. The variable `df` is already defined, and shouldn't be redefined in the code.\n"
     "12. For matplotlib plots, use plt.figure() to create figures, but don't call plt.show().\n"
     "13. Avoid generating too long code that make execution time too long.\n"
+    "14. Do not include any import statements in the code.\n"
 )
 
     # "8. When working with pandas DataFrames, use .head().to_markdown() for display.\n"
