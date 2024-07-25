@@ -2,17 +2,21 @@ from llama_index.core.prompts import PromptTemplate, PromptType
 
 DEFAULT_INSTRUCTION_STR = (
     "1. Convert the query to executable Python code.\n"
-    "2. The final line of code should be a Python expression that can be called with the `eval()` function.\n"
-    "3. The code should represent a solution to the query.\n"
-    "4. PRINT ONLY THE EXPRESSION.\n"
-    "5. Do not quote the expression.\n"
-    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
-    "7. Avoid code with "
-    "8. When there are pandas data frame in the result, convert the head to markdown format"
-    "9. Don't need plt.show(), just have plt.figure() to create per"
-    "10. Do not import anything"
+    "2. Format the code properly with consistent indentation (use 4 spaces for each level).\n"
+    "3. Use clear and descriptive variable names.\n"
+    "4. Separate logical sections of code with blank lines for readability.\n"
+    "5. Include all necessary function definitions and variable assignments.\n"
+    "6. Do not quote or escape the code in any way.\n"
+    "7. Avoid using input() or any other user input functions.\n"
+    "8. Ensure all variables used are properly defined within the code.\n"
+    "9. Use appropriate whitespace around operators and after commas.\n"
+    "10. Follow PEP 8 style guidelines for naming conventions and code layout.\n"
+    "11. The variable `df` is already defined, and shouldn't be redefined in the code.\n"
 )
+    # "8. When working with pandas DataFrames, use .head().to_markdown() for display.\n"
 
+    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
+    # "9. For matplotlib plots, use plt.figure() to create figures, but don't call plt.show().\n"
 
 # **NOTE**: newer version of sql query engine
 DEFAULT_RESPONSE_SYNTHESIS_PROMPT_TMPL = (
@@ -202,7 +206,6 @@ DEFAULT_EDA_INSIGHT_CODE_TMPL = (
     "5. Use plt.switch_backend('agg') at the beginning of your code to use a non-interactive backend.\n"
     "6. Save all plots as PNG image files in the './plots' directory."
     "7. Do not use plt.show() or any interactive plotting functions.\n"
-    "8. Include df = pd.read_csv('./data/dataframe.csv') at the beginning of your code.\n"
     "Data Preview:\n"
     "This is the result of `print(df.head())`:\n"
     "{df_str}\n\n"
@@ -223,3 +226,6 @@ DEFAULT_EDA_INSIGHT_CODE_TMPL = (
 DEFAULT_EDA_INSIGHT_CODE_PROMPT = PromptTemplate(
     DEFAULT_EDA_INSIGHT_CODE_TMPL
 )
+
+
+    # "8. Include df = pd.read_csv('./data/dataframe.csv') at the beginning of your code.\n"

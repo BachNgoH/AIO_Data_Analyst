@@ -150,7 +150,7 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n{pandas_response_str}\n\n")
-            pandas_response_str = "```\n" + pandas_response_str + "\n```\n" if not pandas_response_str.startswith(
+            pandas_response_str = "```python\n" + pandas_response_str + "\n```\n" if not pandas_response_str.startswith(
                 "```") else pandas_response_str
             run_sync(cl.Message(content=f"Generated Instructions:\n\n {pandas_response_str}\n").send())
 
@@ -190,6 +190,7 @@ class DataAnalysisToolSuite:
 
         if self._verbose:
             logging.info(f"> Instructions:\n```\n{pandas_response_str}\n```\n")
+            pandas_response_str = "```python\n" + pandas_response_str + "\n```\n" if not pandas_response_str.startswith("```") else pandas_response_str
             await cl.Message(content=f"Generated Instructions:\n{pandas_response_str}\n").send()
 
         pandas_output = self._instruction_parser.parse(pandas_response_str)
@@ -397,6 +398,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
         files = glob.glob(os.path.join(plots_dir, '*'))
         for f in files:
             os.remove(f)
+    
     def generate_eda_insights(self, query_str: str) -> Response:
         """Generate, execute EDA code, and provide insights based on the results."""
         context = self._get_table_context()
@@ -517,6 +519,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
         zip_path = await cl.make_async(self.zip_code_file)(file_path, 'eda.zip')
 
         return Response(response=response_str, metadata=response_metadata)
+    
     def full_analysis(self, query_str: str) -> Response:
         """Perform full analysis including EDA insights and Scikit-learn model execution."""
         
@@ -553,13 +556,13 @@ from sklearn.metrics import mean_squared_error, accuracy_score, classification_r
     def get_tools(self):
         """Get tools."""
         return [
-            FunctionTool.from_defaults(fn=self.generate_and_run_code,description="generate machine learning, scikit code"),
-            FunctionTool.from_defaults(fn=self.agenerate_and_run_code),
-            FunctionTool.from_defaults(fn=self.execute_code),
-            FunctionTool.from_defaults(fn=self.generate_code,description="generate pandas eda"),
+            FunctionTool.from_defaults(fn=self.generate_and_run_code, async_fn=self.agenerate_and_run_code),
+            # FunctionTool.from_defaults(fn=self.agenerate_and_run_code),
+            # FunctionTool.from_defaults(fn=self.execute_code),
+            FunctionTool.from_defaults(fn=self.generate_code),
             FunctionTool.from_defaults(fn=self.retry_generate_code),
-            FunctionTool.from_defaults(fn=self.generate_and_execute_scikit_code),
-            FunctionTool.from_defaults(fn=self.generate_eda_insights,description="generate insight, generate eda"),
-            FunctionTool.from_defaults(fn=self.generate_eda_insights_async, description="generate insight, generate eda (async)"),
-            FunctionTool.from_defaults(fn=self.full_analysis, description="perform full analysis including EDA and machine learning modeling"),
+            # FunctionTool.from_defaults(fn=self.generate_and_execute_scikit_code),
+            # FunctionTool.from_defaults(fn=self.generate_eda_insights,description="generate insight, generate eda"),
+            # FunctionTool.from_defaults(fn=self.generate_eda_insights_async, description="generate insight, generate eda (async)"),
+            # FunctionTool.from_defaults(fn=self.full_analysis, description="perform full analysis including EDA and machine learning modeling"),
         ]

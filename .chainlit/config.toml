@@ -36,7 +36,7 @@ auto_tag_thread = true
     enabled = true
     accept = ["*/*"]
     max_files = 20
-    max_size_mb = 500
+    max_size_mb = 1000
 
 # Allows user to use speech to text
 [features.speech_to_text]

@@ -2,12 +2,13 @@ from typing import List
 import chainlit as cl
 import pandas as pd
 from llama_index.core.agent import AgentRunner, ReActAgent
+from llama_index.agent.openai import OpenAIAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from dotenv import load_dotenv
 from src.agents.base import BaseChainlitAgent
 from src.utils.llm_utils import load_model
 from .prompts import WELCOME_MESSAGE, BASE_SYSTEM_PROMPT, SYSTEM_PROMPT
-from src.const import MAX_ITERATIONS
+from src.const import MAX_ITERATIONS, LLM_PROVIDER
 import re
 load_dotenv(override=True)
 
@@ -55,7 +56,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
             files = await cl.AskFileMessage(
                 content=WELCOME_MESSAGE, 
                 accept=["text/csv"], 
-                max_size_mb=25
+                max_size_mb=1000
             ).send()
 
         text_file = files[0]
@@ -75,9 +76,14 @@ class LLMCompilerAgent(BaseChainlitAgent):
         await LLMCompilerAgent._ask_file_handler()
         tools = LLMCompilerAgent._init_tools()
 
-        agent = ReActAgent.from_tools(
-            tools, llm=llm, verbose=True, max_iterations=MAX_ITERATIONS
-        )
+        if LLM_PROVIDER == "openai":
+            agent = OpenAIAgent.from_tools(
+                tools, llm=llm, verbose=True, max_function_calls=MAX_ITERATIONS
+            )
+        else:
+            agent = ReActAgent.from_tools(
+                tools, llm=llm, verbose=True, max_iterations=MAX_ITERATIONS
+            )
         LLMCompilerAgent._agent = agent
         cl.user_session.set(LLMCompilerAgent._AGENT_IDENTIFIER, agent)
     

@@ -86,6 +86,8 @@ def show_plot() -> str:
             display="inline", 
             content=buffer.getvalue())
         
+        run_sync(cl.Message(content="", elements=[image]).send())
+        
         return Status.SHOW_PLOT_SUCCESS
     except Exception as e:
         return Status.SHOW_PLOT_FAILED
@@ -177,14 +179,14 @@ class InstructionParser(ChainableOutputParser):
             self.df = exec_globals.get('df', self.df)
             
             # Handle matplotlib plots if any
-            plt = exec_globals.get('plt')
-            if plt and plt.get_fignums():
-                for i, fig in enumerate(plt.get_fignums()):
-                    plt.figure(fig).savefig(f'plot_{i}.png')
-                plt.close('all')
+            # plt = exec_globals.get('plt')
+            # if plt and plt.get_fignums():
+            #     for i, fig in enumerate(plt.get_fignums()):
+            #         plt.figure(fig).savefig(f'plot_{i}.png')
+            #     plt.close('all')
             
             # Return the result
-            result = exec_locals.get('result', 'Code executed successfully')
+            result = exec_locals.get('result', '')
             return str(result)
         except Exception as e:
             return f"Error executing code: {str(e)}"
