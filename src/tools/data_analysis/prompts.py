@@ -1,25 +1,32 @@
-from llama_index.core.prompts import PromptTemplate, PromptType
+from llama_index.core.prompts import PromptTemplate
+from enum import Enum
+
+class PromptType(Enum):
+    PANDAS = "pandas"
+    MODEL = "model"
+    SQL = "sql"
+    DEFAULT = "default"
 
 DEFAULT_INSTRUCTION_STR = (
     "1. Convert the query to executable Python code.\n"
-    "2. Format the code properly with consistent indentation (use 4 spaces for each level).\n"
-    "3. Use clear and descriptive variable names.\n"
-    "4. Separate logical sections of code with blank lines for readability.\n"
-    "5. Include all necessary function definitions and variable assignments.\n"
-    "6. Do not quote or escape the code in any way.\n"
-    "7. Avoid using input() or any other user input functions.\n"
-    "8. Ensure all variables used are properly defined within the code.\n"
-    "9. Use appropriate whitespace around operators and after commas.\n"
-    "10. Follow PEP 8 style guidelines for naming conventions and code layout.\n"
-    "11. The variable `df` is already defined, and shouldn't be redefined in the code.\n"
-    "12. For matplotlib plots, use plt.figure() to create figures, but don't call plt.show().\n"
-    "13. Avoid generating too long code that make execution time too long.\n"
-    "14. Do not include any import statements in the code.\n"
+    "2. The final line of code should be a Python expression that can be called with the `eval()` function.\n"
+    "3. The code should represent a solution to the query.\n"
+    # "4. PRINT ONLY THE EXPRESSION.\n"
+    "5. Do not quote the expression.\n"
+    "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
+    "7. Write code in markdown format\n"
+    "8. If you show plot, please follow this:"
+    "   Ensure that each plot is clear, well-labeled, and provides insights into the data.\n"
+    "   Adjust plot scales and axes to ensure readability, especially when there is a wide range of values.\n"
+    "   Use appropriate scaling techniques and focus on significant value ranges to adjust y-axis values without increasing the width of the plot.\n"
+    "   Adjust y-axis limits so that the data occupies at least 50 percent of the plot space.\n"
+    "   Remove or handle outliers effectively to improve the visibility of the plots.\n"
+    "   For categorical variables with too many categories, limit the number displayed or aggregate minor ones into an 'Other' category.\n"
+    "   Rotate x-axis labels if needed for better readability.\n"
+    "9. Do not ask user to do anything. You need to answer based on the query of user. If you lack information let assume a information and continue\n"
+    # "7. When there are pandas data frame in the result, convert the head to markdown format"
 )
 
-    # "8. When working with pandas DataFrames, use .head().to_markdown() for display.\n"
-
-    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
 
 # **NOTE**: newer version of sql query engine
 DEFAULT_RESPONSE_SYNTHESIS_PROMPT_TMPL = (
@@ -69,166 +76,192 @@ DEFAULT_PANDAS_EXCEPTION_PROMPT = PromptTemplate(
 )
 
 
-DEFAULT_SCIKIT_TMPL = (
-    # "YOU DON'T NEED TO IMPORT ANYTHING"
-    "You are working with a pandas dataframe in Python.\n"
-    "The name of the dataframe is `df`.\n"
+"""
+BUILD MODEL
+"""
+
+# Instructions for generating code for model building and training
+DEFAULT_MODEL_INSTRUCTION_STR = (
+    "1. Convert the query to executable Python code.\n"
+    "2. The final line of code should be a Python expression that can be called with the `eval()` function.\n"
+    "3. The code should represent a solution to the query.\n"
+    "4. PRINT ONLY THE EXPRESSION.\n"
+    "5. Do not quote the expression.\n"
+    "6. The necessary scikit-learn imports have already been made, DO NOT IMPORT AGAIN.\n"
+    "7. Use the DataFrame variable `df` instead of `dataset` in your code.\n"
+    "8. Ensure the code includes model definition, training, and evaluation steps.\n"
+    "9. Choose a suitable model from the scikit-learn library and handle errors gracefully.\n"
+    "10. Import any other required libraries if they are not already imported.\n"
+    "11. If an error occurs, provide a corrected version of the code to handle this error.\n"
+    "12. Consider any previously encountered errors to avoid repeating them.\n"
+    #"13. Choose the best evaluation metric based on the problem type (classification or regression) and include it in the final expression.\n"
+    "13. Please use accuracy score.\n"
+    
+)
+
+# Template for synthesizing a response from model training results
+DEFAULT_MODEL_RESPONSE_SYNTHESIS_PROMPT_TMPL = (
+    "Given an input question, synthesize a response from the model training results.\n"
+    "Query: {query_str}\n\n"
+    "Instructions (optional):\n{model_instructions}\n\n"
+    "Execution Output: {model_output}\n\n"
+    "Response: "
+)
+DEFAULT_MODEL_RESPONSE_SYNTHESIS_PROMPT = PromptTemplate(
+    DEFAULT_MODEL_RESPONSE_SYNTHESIS_PROMPT_TMPL,
+)
+
+# Template for generating model-related code
+DEFAULT_MODEL_TMPL = (
+    "You are working with a scikit-learn model in Python.\n"
+    "The DataFrame has been prepared and is named `df`.\n"
     "This is the result of `print(df.head())`:\n"
-    "Include df = pd.read_csv('./data/dataframe.csv')"
     "{df_str}\n\n"
     "Follow these instructions:\n"
     "{instruction_str}\n"
     "Query: {query_str}\n\n"
     "Expression:"
-    "Encapsulate each step of the machine learning workflow in a function to maintain clean and modular code. For example: \n"
-    "def split_data: return X_train, X_test, y_train, y_test.\n"
-    "def train_model(model, X_train, y_train): return trained_model.\n\n"
-    "Generate a well-structured machine learning code using the Scikit-learn library. "
-     "- Save all plots as PNG image files in the './plots' directory.\n"
-    "The code should include the following functions:\n\n"
-    "Base of the 'df' provide, you choose the suitable target"
-    "1. Use the dataframe `df` directly without loading it.\n\n"
-    "2. `split_data`: Splits the data into training and testing sets.\n\n"
-    "3. `define_model`: Defines a machine learning model and returns it.\n\n"
-    "4. `train_model`: Trains the model on the training data.\n\n"
-    "5. `evaluate_model`: Evaluates the model using a specified evaluation metric.\n\n"
-    "6. `plot_test_results`: Plots the test set results, showing the true labels versus the predicted labels.\n\n"
-    "rememeber to print information such as accuracy or something you think it's necessary"
-    "Assume the dataset is a Pandas DataFrame `df` with features and labels for training and testing."
-    # "MUST NOT  IMPORT ANYTHING"
 )
-DEFAULT_SCIKIT_PROMPT = PromptTemplate(
-    DEFAULT_SCIKIT_TMPL
+DEFAULT_MODEL_PROMPT = PromptTemplate(
+    DEFAULT_MODEL_TMPL, prompt_type=PromptType.MODEL
 )
-DEFAULT_INSTRUCTION_SCIKIT_STR = (
-    "1. Convert the query to executable Python code.\n"
-    "2. The final line of code should be a Python expression that can be called with the `eval()` function.\n"
-    "3. The code should represent a solution to the query.\n"
-    "Make sure to encapsulate each step in a function to maintain clean and modular code. For example: \n"
-    "Just give me the python code, nothing include except python code"
-    "The name of the dataframe is `df`, use directly df, don't need to load_data()"
-    # "6. The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN\n"
-    "7. Avoid code with "
-    "4. PRINT ONLY THE EXPRESSION.\n"
-    "5. Do not quote the expression.\n"
-    # "MUST NOT  IMPORT ANYTHING"
+
+DEFAULT_MODEL_EXCEPTION_TMPL = (
+    "An error occurred while working with a scikit-learn model in Python.\n"
+    "The dataset has been prepared and is named `df`.\n"
+    "This is the result of `print(df.head())`:\n"
+    "{df_str}\n\n"
+    "The following instruction caused an error:\n"
+    "{instruction_str}\n"
+    "Query: {query_str}\n\n"
+    "The error message was:\n"
+    "{error_msg}\n\n"
+    "Previous errors:\n"
+    "{error_history}\n\n"
+    "Please provide a corrected version of the code to handle this error:\n\n"
+    "Corrected Expression:"
 )
-DEFAULT_EDA_TMPL = (
-    "You are an expert data analyst working with a pandas dataframe in Python.\n"
-    "The name of the dataframe is `df`.\n"
+DEFAULT_MODEL_EXCEPTION_PROMPT = PromptTemplate(
+    DEFAULT_MODEL_EXCEPTION_TMPL, prompt_type=PromptType.MODEL
+)
+
+
+
+
+DEFAULT_COMPREHENSIVE_ANALYSIS_INSTRUCTION_STR = (
+    "1. Provide a brief summary of the data types used for variables, including the most common data types and any that require special attention.\n"
+    "2. Provide a brief summary of the data, including count, mean, std, min, 25%, 50%, 75%, max for each column.\n"
+    "3. Handle missing data appropriately and describe the methods used.\n"
+    "4. Determine the data types of each column and convert them to appropriate types if necessary.\n"
+    "5. Select key variables to visualize, focusing on important relationships and distributions.\n"
+    "   Ensure that each plot is clear, well-labeled, and provides insights into the data.\n"
+    "   Adjust plot scales and axes to ensure readability, especially when there is a wide range of values.\n"
+    "   Use appropriate scaling techniques and focus on significant value ranges to adjust y-axis values without increasing the width of the plot.\n"
+    "   Adjust y-axis limits so that the data occupies at least 50 percent of the plot space.\n"
+    "   Remove or handle outliers effectively to improve the visibility of the plots.\n"
+    "   For categorical variables with too many categories, limit the number displayed or aggregate minor ones into an 'Other' category.\n"
+    "   Rotate x-axis labels if needed for better readability.\n"
+    "   Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting\n"
+    "6. Provide insights and interpretations for each analysis step to help understand the significance of the findings.\n"
+    "7. Suggest appropriate statistical methods for deeper analysis when relevant.\n"
+    "8. Ensure the analysis is reproducible and clearly documented.\n"
+)
+
+DEFAULT_COMPREHENSIVE_ANALYSIS_PROMPT_TMPL = (
+    "You are an advanced data analysis agent working with a DataFrame in Python. The DataFrame has been prepared and is named `df`.\n"
     "This is the result of `print(df.head())`:\n"
     "{df_str}\n\n"
     "Follow these instructions:\n"
     "{instruction_str}\n"
     "Query: {query_str}\n\n"
-    "Generate comprehensive and professional Exploratory Data Analysis (EDA) code using pandas, matplotlib, and seaborn libraries. "
-    "Focus on creating informative and visually appealing plots. The code should include the following visualizations:\n\n"
-    "1. Distribution Plots:\n"
-    "   - Create histograms and kernel density plots for numerical features\n"
-    "   - Use seaborn's distplot or displot for enhanced distribution visualization\n\n"
-    "2. Feature Relationships:\n"
-    "   - Generate a pair plot using seaborn's pairplot function to show relationships between multiple features\n"
-    "   - Create a correlation heatmap using seaborn's heatmap function\n\n"
-    "3. Categorical Data Visualization:\n"
-    "   - Use bar plots and count plots for categorical features\n"
-    "   - Create box plots or violin plots to show the distribution of numerical features across categories\n\n"
-    "4. Time Series Plots (if applicable):\n"
-    "   - Generate line plots for time-based data\n"
-    "   - Use seaborn's lineplot for enhanced time series visualization\n\n"
-    "5. Feature-Target Relationship:\n"
-    "   - Create scatter plots or joint plots to visualize the relationship between features and the target variable\n"
-    "   - Use seaborn's regplot for regression plots with confidence intervals\n\n"
-    "7. Dimensionality Reduction Visualization (if applicable):\n"
-    "   - Implement PCA and visualize the results in a scatter plot\n"
-    "   - Use t-SNE for non-linear dimensionality reduction and visualization\n\n"
-    "8. Customized Seaborn Plots:\n"
-    "   - Utilize seaborn's FacetGrid for creating multiple related plots\n"
-    "   - Implement seaborn's jointplot for bivariate distributions\n\n"
-    "Use the dataframe `df` directly without loading it.\n"
-    "Ensure all plots have appropriate titles, labels, and legends.\n"
-    "Use a consistent color scheme and style across all plots.\n"
-    "Adjust plot sizes and layouts for optimal visibility.\n"
-    "Include code to save high-resolution versions of the plots.\n"
-    "Your code should be well-structured, commented, and ready to execute.\n"
-    "After generating the code, provide a brief description of each plot and its purpose in the EDA process.\n"
-    "Remember to handle any potential errors or edge cases in the data.\n"
-    "Do not include any data preprocessing or analysis steps - focus solely on generating visualization code.\n"
-    # "The import of pandas as pd, numpy as np, and seaborn as sns are already made, DO NOT IMPORT AGAIN, DO NOT IMPORT ANYTHING"
-    "not use : Use of `hue` with `kind='reg'` is not currently supported"
+    "Your goal is to help users understand their data by providing clear and detailed insights. Explain your findings, suggest appropriate statistical methods, and offer guidance on data visualization techniques.\n"
+    "Ensure the analysis is well-documented, reproducible, and presented in a professional yet approachable manner.\n"
+    "Do not generate code to display the datatype of each column. Instead, summarize the data types and highlight any that require special attention.\n"
+    "Generate code to show the plot,please\n"
+    "Focus on creating reasonable and informative plots that emphasize key relationships and distributions within the data.\n"
+    "Expression:"
 )
-DEFAULT_EDA_PROMPT = PromptTemplate(
-    DEFAULT_EDA_TMPL
+
+DEFAULT_COMPREHENSIVE_ANALYSIS_PROMPT = PromptTemplate(
+    DEFAULT_COMPREHENSIVE_ANALYSIS_PROMPT_TMPL, prompt_type=PromptType.MODEL
 )
-DEFAULT_EDA_INSIGHT_TMPL = (
-    "You are an AI data analysis expert. The dataframe is named `df`.\n"
-    "IMPORTANT:\n"
-    "- Do NOT code anything.\n"
-    # "- The import of pandas as `pd`, numpy as `np`, and seaborn as `sns` is already done. Do NOT import anything again.\n"
-    "- `hue` with `kind='reg'` is not supported.\n\n"
-    "Data Preview:\n"
-    "This is the result of `print(df.head())`:\n"
-    "{df_str}\n\n"
-    "Execution Results:\n"
-    "{eda_output}\n\n"
-    "Query:\n"
-    "Based on the execution results and the following query, perform a comprehensive analysis:\n"
-    "Query: {query_str}\n\n"
-    "### Analysis Guidelines:\n"
-    "Provide insights using the following steps. FOCUS ON GIVING PERSPECTIVE and PERSONAL OPINION rather than just listing statistics.\n\n"
-    "#### 1. Data Distribution:\n"
-    "- Discuss the overall distribution of the data.\n"
-    "- Note any skewness, outliers, or anomalies.\n\n"
-    "#### 2. Significant Patterns and Trends:\n"
-    "- Identify and explain any notable patterns or trends in the data.\n\n"
-    "#### 3. Noteworthy Testing Results:\n"
-    "- Highlight any significant results from statistical tests.\n\n"
-    "#### 4. Feature-Label Relationships:\n"
-    "- Analyze the relationships between features and the label.\n"
-    "- Interpret correlations and discuss their implications.\n\n"
-    "#### 5. Feature Influence:\n"
-    "- Identify which features have the strongest influence on the target variable.\n\n"
-    "#### 6. Patterns, Trends, and Insights:\n"
-    "- Describe important patterns, trends, and insights discovered during the analysis.\n"
-    "- Comment on the visualizations created and their implications.\n\n"
-    "#### 7. Recommendations:\n"
-    "- Provide recommendations for further analysis or potential model improvements.\n"
-    "- Suggest suitable visualizations to illustrate key findings.\n\n"
-    "### Deliverables:\n"
-    "Present your analysis concisely, clearly, and with data-driven justification. Provide personal observations and opinions where appropriate."
+
+
+
+DEFAULT_SUMMARIZE_INSTRUCTION_STR = (
+    "1. Read the provided content carefully.\n"
+    "2. Identify and summarize the main ideas and essential details.\n"
+    "3. If the content includes statistical summaries (e.g., count, mean, std, min, 25%, 50%, 75%, max), format this information into a markdown table for clarity.\n"
+    "4. Ensure your summary is concise and clear.\n"
+    "5. Do not include unnecessary information.\n"
+    "6. Make your summary easy to read and understand, even for someone not familiar with the original content.\n"
+    "7. If the output is tabular data, please create a table in markdown to fit those data\n"
+    "8. If the output contains python code, please write that python code in markdown\n"
+    "9. If there is no content to summarize, please check if there is any plot. If yes you need to summarize based on that plot.Otherwise left nothing\n"
+) 
+
+DEFAULT_SUMMARIZE_PROMPT_TMPL = (
+    "You are an advanced summarization agent. Your goal is to help users understand the key points and important details from the provided text. Please follow these instructions:\n\n"
+    "{instruction_str}\n\n"
+    "Here is the content to summarize:\n"
+    "{content}\n\n"
+    "Ensure your summary is concise, clear, and captures the main ideas and essential details. Do not include unnecessary information. Your summary should be easy to read and understand, even for someone not familiar with the original content.\n"
 )
-DEFAULT_EDA_INSIGHT_PROMPT = PromptTemplate(
-    DEFAULT_EDA_INSIGHT_TMPL
+
+DEFAULT_SUMMARIZE_PROMPT = PromptTemplate(
+    DEFAULT_SUMMARIZE_PROMPT_TMPL, prompt_type=PromptType.MODEL
 )
-DEFAULT_EDA_INSIGHT_CODE_TMPL = (
-    "You are an AI data analysis expert. The dataframe is named `df`.\n"
-    "IMPORTANT:\n"
-    "1. The code should be properly indented and formatted.\n"
-    "2. Handle any FutureWarnings, especially for the df.corr() method, by specifying numeric_only=True.\n"
-    "3. Do NOT use SHARPIO or any other strange library.\n"
-    # "4. The import of pandas as `pd`, numpy as `np`, matplotlib.pyplot as `plt`, and seaborn as `sns` is already done. DO NOT IMPORT ANYTHING AGAIN.\n"
-    "5. Use plt.switch_backend('agg') at the beginning of your code to use a non-interactive backend.\n"
-    "6. Save all plots as PNG image files in the './plots' directory."
-    "7. Do not use plt.show() or any interactive plotting functions.\n"
-    "Data Preview:\n"
-    "This is the result of `print(df.head())`:\n"
-    "{df_str}\n\n"
+
+DEFAULT_LOAD_DATA_PROMPT_TMPL = (
+    "You are a data loading agent. Your task is to load data from various types of files including CSV, Excel, images, and text files. "
+    "Here are the details of the files uploaded:\n"
+    "{file_details}\n\n"
     "Follow these instructions:\n"
-    "{instruction_str}"
-    "Generate comprehensive EDA code based on the following query:\n"
+    "1. Identify the file type (CSV, Excel, image, text, etc.).\n"
+    "2. For each file type, perform the following steps:\n"
+    "   a. CSV/Excel Files:\n"
+    "      - Load the data into a DataFrame.\n"
+    "      - Display the first few rows of the DataFrame.\n"
+    "   b. Image Files:\n"
+    "      - Provide basic information about the image (format, mode, size).\n"
+    "   c. Text Files:\n"
+    "      - Display the content of the text file.\n"
+    "3. Ensure that the data loading process is well-documented and reproducible.\n"
+    "4. Return the loaded data in an appropriate format (e.g., DataFrame for tabular data, image object for images, string for text).\n\n"
     "Query: {query_str}\n\n"
-    "Your code should include:\n"
-    "1. Descriptive statistics for numeric columns only.\n"
-    "2. Correlation analysis for numeric columns only.\n"
-    "3. Appropriate statistical tests for numeric columns only.\n"
-    "4. Visualizations to illustrate key findings, saved as image files.\n\n"
-    "The code must have print() statements to indicate which statistical property is being executed. These print statements must be clear and informative because the execution output will be used for further analysis by another model.\n"
-    "Ensure that non-numeric columns are handled appropriately and do not cause errors in numerical operations.\n"
-    "Make sure about the indent of the code.\n"
-    "Provide the generated EDA code in a single Python code block."
+    "Expression:"
 )
-DEFAULT_EDA_INSIGHT_CODE_PROMPT = PromptTemplate(
-    DEFAULT_EDA_INSIGHT_CODE_TMPL
+
+DEFAULT_LOAD_DATA_PROMPT = PromptTemplate(
+    DEFAULT_LOAD_DATA_PROMPT_TMPL, prompt_type=PromptType.MODEL
 )
 
 
-    # "8. Include df = pd.read_csv('./data/dataframe.csv') at the beginning of your code.\n"
+
+DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR = (
+    "1. Carefully examine the provided plot image and the extracted text.\n"
+    "2. Identify and interpret the key elements of the plot, including titles, labels, and any annotations.\n"
+    "3. Analyze the visual features of the plot, such as data points, lines, bars, or other graphical elements.\n"
+    "4. Summarize the main findings and insights from the plot.\n"
+    # "5. If there are any statistical summaries in the text (e.g., count, mean, std, min, 25%, 50%, 75%, max), format this information into a markdown table for clarity.\n"
+    "5. Do not generate statistical summaries (count, mean, std, min, 25%,....)"
+    "6. Ensure your analysis is concise and clear.\n"
+    "7. Do not include unnecessary information.\n"
+    "8. Make your analysis easy to read and understand, even for someone not familiar with the original plot.\n"
+    "9. If the output is tabular data, create a table in markdown to fit those data.\n"
+    "10. If the output contains Python code, write that Python code in markdown.\n"
+    "11. If there is no significant text content to analyze, base your summary on the visual features of the plot alone.\n"
+)
+
+DEFAULT_ANALYZE_PLOT_PROMPT_TMPL = (
+    "You are an advanced plot analysis agent. Your goal is to help users understand the key points and important details from the provided plot image and extracted text. Please follow these instructions:\n\n"
+    "{instruction_str}\n\n"
+    "Here is the content to analyze:\n"
+    "Extracted Text: {extracted_text}\n"
+    "Visual Features: {visual_features}\n\n"
+    "Ensure your analysis is concise, clear, and captures the main findings and insights. Do not include unnecessary information. Your analysis should be easy to read and understand, even for someone not familiar with the original plot.\n"
+)
+
+DEFAULT_ANALYZE_PLOT_PROMPT = PromptTemplate(
+    DEFAULT_ANALYZE_PLOT_PROMPT_TMPL, prompt_type=PromptType.MODEL
+)
