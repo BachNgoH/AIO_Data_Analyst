@@ -28,21 +28,17 @@ import matplotlib.pyplot as plt
 import chainlit as cl
 from enum import Enum
 from typing import Any, Dict, Optional, List
-from paddleocr import PaddleOCR
+# from paddleocr import PaddleOCR
 
 # import holoviews as hv
 # import pandas as pd
 # from holoviews import opts
 # from bokeh.io import output_notebook
 
-from src.tools.data_analysis.prompts import (
-    DEFAULT_ANALYZE_PLOT_PROMPT,
-    DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR
-)
-
 from chainlit import run_sync
 # from llama_index.experimental.exec_utils import safe_eval, safe_exec
 from llama_index.core.output_parsers.base import ChainableOutputParser
+from src.tools.data_analysis.prompts import DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR
 logger = logging.getLogger(__name__)
 
 
@@ -68,80 +64,6 @@ class Status(Enum):
     NO_PLOT = "No plot"
     SHOW_PLOT_SUCCESS = "Show plot successfully!"
     SHOW_PLOT_FAILED = "Show plot failed!"
-
-def preprocess_image(image):
-    # Ensure the image is in RGB format
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-    return preprocess(image).unsqueeze(0)
-
-def extract_text_from_image(image):
-    """
-    Extracts text from an image using PaddleOCR and formats it for readability.
-
-    Args:
-    image (PIL.Image): The image from which to extract text.
-
-    Returns:
-    str: The extracted text formatted for readability.
-    """
-    # Initialize the PaddleOCR model
-    ocr = PaddleOCR(use_angle_cls=True, lang='en')  # You can specify other languages if needed
-
-    # Convert the PIL image to a format suitable for PaddleOCR
-    image_np = np.array(image)
-
-    # Perform OCR on the image
-    result = ocr.ocr(image_np, cls=True)
-
-    # Extract and format the text
-    formatted_text = []
-    for line in result:
-        for word in line:
-            formatted_text.append(word[1][0])
-
-    # Join the text elements with a semicolon for readability
-    extracted_text = '; '.join(formatted_text)
-    return extracted_text
-def extract_features_from_image(image):
-    """
-    Extracts features from an image using a Vision Transformer (ViT) model.
-
-    Args:
-    image (PIL.Image): The image from which to extract features.
-
-    Returns:
-    torch.Tensor: The extracted features.
-    """
-    # Load the ViT model
-    model = timm.create_model('vit_base_patch16_224', pretrained=True)
-    model.eval()
-
-    # Preprocess the image
-    inputs = preprocess_image(image)
-
-    # Pass the image through the model
-    with torch.no_grad():
-        outputs = model.forward_features(inputs)
-
-    return outputs
-
-def generate_description(llm,text, features):
-    generated_description= llm.predict(
-        DEFAULT_ANALYZE_PLOT_PROMPT,
-        instruction_str= DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR,
-        extracted_text= text,
-        visual_features=features
-
-    )
-    return generated_description
 
 def parse_code_markdown(text: str, only_last: bool) -> List[str]:
     # Regular expression pattern to match code within triple-backticks with an optional programming language
@@ -240,8 +162,6 @@ def show_plot() -> str:
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
-        # image normal 
-     
 
         # Clear the plot
         plt.close()
@@ -262,45 +182,40 @@ def show_plot() -> str:
         return Status.SHOW_PLOT_SUCCESS
     except Exception as e:
         return Status.SHOW_PLOT_FAILED
-def show_plotv2(llm) :
+    
+def show_plotv2(vision_llm:any) :
     try:
-        # Ensure there's a plot to display
-        # if not plt.get_fignums():
-        #     return Status.NO_PLOT
-        
-        
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
         new_buffer=buffer.getvalue()
 
         plt.close()
-
+        
         image = cl.Image(
             name="plot", 
             size="large", 
-            #display="inline", 
+            display="inline", 
             content=new_buffer)
-
+        
         run_sync(cl.Message(
             content="",
             elements=[image]
         ).send())
 
         buffer.seek(0)
-        image2 = Image.open(buffer)
-        text = extract_text_from_image(image2)
-    
-        # #  # Extract features from the image
-        features = extract_features_from_image(image2)
+        image_sequence = [Image.open(buffer)]
 
-        description = generate_description(llm,text, features)
-        #text="successful\n"
+        description = vision_llm.complete(
+        prompt=DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR,
+        images= image_sequence,
+        )
+
         run_sync(cl.Message(
-            content=description,
+            content=f"\n\n{description}\n",
+
         ).send())
 
-        print(text)
         return description
     except Exception as e:
         return Status.SHOW_PLOT_FAILED
@@ -349,9 +264,9 @@ class InstructionParser(ChainableOutputParser):
     def parse(self, output: str) -> Any:
         """Parse, validate, and correct errors programmatically."""
         return self.default_output_processor(output, **self.output_kwargs)
-    def parsev2(self, output: str,llm) -> Any:
+    def parsev2(self, output: str,vision_llm:any) -> Any:
         """Parse, validate, and correct errors programmatically."""
-        return self.output_processor_comprehensive_data_analysis(output, llm,**self.output_kwargs)
+        return self.output_processor_comprehensive_data_analysis(output, vision_llm,**self.output_kwargs)
     
     def default_output_processor(self, output: str, timeout: int = 1000, **output_kwargs: Any) -> str:
         """Process outputs in a default manner with a timeout."""
@@ -434,7 +349,7 @@ class InstructionParser(ChainableOutputParser):
             signal.alarm(0)  # Disable the alarm
 
 
-    def output_processor_comprehensive_data_analysis(self, output: str, llm:any,timeout: int = 2000, **output_kwargs: Any) -> str:
+    def output_processor_comprehensive_data_analysis(self, output: str, vision_llm:any,timeout: int = 2000, **output_kwargs: Any) -> str:
         """Process outputs in a default manner with a timeout."""
         if sys.version_info < (3, 9):
             logger.warning(
@@ -489,10 +404,9 @@ class InstructionParser(ChainableOutputParser):
                 
                 output_str = str(eval(module_end_str, global_vars, local_vars))
                 descriptions=[]
-                for fig_num in plt.get_fignums():
-                    
+                for fig_num in plt.get_fignums(): 
                     plt.figure(fig_num)
-                    descriptions.append(show_plotv2(llm))
+                    descriptions.append(show_plotv2(vision_llm))
                     plt.close(fig_num)
                 
                 printed_output = new_stdout.getvalue()
@@ -517,5 +431,5 @@ class InstructionParser(ChainableOutputParser):
             self.error_history.append({"error": str(e), "code": output})
             return err_string
         finally:
-            #sys.stdout = old_stdout  # Restore standard output
+            sys.stdout = old_stdout  # Restore standard output
             signal.alarm(0)  # Disable the alarm

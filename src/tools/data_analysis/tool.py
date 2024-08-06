@@ -4,6 +4,8 @@ import io
 import pytesseract
 from PIL import Image
 import matplotlib.pyplot as plt
+from typing import List, Dict, Any
+
 
 import torch
 import torch.nn as nn
@@ -33,8 +35,6 @@ from src.tools.data_analysis.prompts import (
     DEFAULT_COMPREHENSIVE_ANALYSIS_INSTRUCTION_STR,
     DEFAULT_SUMMARIZE_PROMPT,
     DEFAULT_SUMMARIZE_INSTRUCTION_STR,
-    DEFAULT_ANALYZE_PLOT_PROMPT,
-    DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR
 )
 import chainlit as cl
 from chainlit import run_sync
@@ -77,9 +77,10 @@ def format_analysis_output(output: str) -> str:
 # Main function
 class DataAnalysisToolSuite:
     
-    def __init__(self, df: pd.DataFrame, llm: any) -> None:
+    def __init__(self, df:pd.DataFrame, llm: any,vision_llm:any) -> None:
         self._df = df
         self._llm = llm
+        self._vision_llm= vision_llm
         self._verbose = True
         self._instruction_parser = InstructionParser(df)
         self._head = 5
@@ -97,25 +98,12 @@ class DataAnalysisToolSuite:
         self._comprehensive_analysis_prompt_str = DEFAULT_COMPREHENSIVE_ANALYSIS_INSTRUCTION_STR
         self._summarize_prompt = DEFAULT_SUMMARIZE_PROMPT
         self._summarize_prompt_instruction_str= DEFAULT_SUMMARIZE_INSTRUCTION_STR
-        self._plot_analysis_prompt= DEFAULT_ANALYZE_PLOT_PROMPT
-        self._plot_analysis_prompt_instruction_str=DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR
         self._synthesize_response = False
         self.error_history = []
 
     def _get_table_context(self) -> str:
         """Get table context."""
         return str(self._df.head(self._head))
-
-    def generate_description(self,text, features):
-        generated_description= self._llm.predict(
-            self._plot_analysis_prompt,
-            instruction_str= self._plot_analysis_prompt_instruction_str,
-            extracted_text= text,
-            visual_features=features
-
-        )
-        return generated_description
-
     
     def summarize_outputv2(self, content1: str,content2: str) -> str:
         """Summarize the provided content using the default LLM."""
@@ -158,7 +146,7 @@ class DataAnalysisToolSuite:
             #pandas_response_str= self.summarize_output(pandas_response_str)
             run_sync(cl.Message(content=f"Generated Instructions:\n\n{pandas_response_str}\n").send())
 
-        pandas_output = self._instruction_parser.parse(pandas_response_str)
+        pandas_output = self._instruction_parser.parsev2(pandas_response_str,self._vision_llm)
         pandas_output= self.summarize_output(pandas_output)
         if self._verbose:
             logging.info(f"> Execution Output: {pandas_output}\n")
@@ -233,10 +221,9 @@ class DataAnalysisToolSuite:
         if self._verbose:
             logging.info(f"> Instructions:\n\n{pandas_response_str}\n\n")
             pandas_response_str = "'''\n" + pandas_response_str + "\n'''\n" if not pandas_response_str.startswith("'''") else pandas_response_str
-            #pandas_response_str= self.summarize_output(pandas_response_str)
             run_sync(cl.Message(content=f"Generated Instructions:\n\n {pandas_response_str}\n").send())
 
-        pandas_output = self._instruction_parser.parsev2(pandas_response_str,self._llm)
+        pandas_output = self._instruction_parser.parsev2(pandas_response_str,self._vision_llm)
         pandas_output=self.summarize_output(pandas_output)
         if self._verbose:
             logging.info(f"> Execution Output: {pandas_output}\n")
@@ -433,10 +420,9 @@ class DataAnalysisToolSuite:
             run_sync(cl.Message(content=f"Generated Comprehensive Analysis Instructions:\n\n\n{analysis_response_str}\n").send())
 
 
-        analysis_output= self._instruction_parser.parsev2(analysis_response_str,self._llm)
-        #analysis_output= self._instruction_parser.parse(analysis_response_str)
+        analysis_output,descriptions= self._instruction_parser.parsev2(analysis_response_str,self._vision_llm)
         analysis_output= self.summarize_output(analysis_output)
-        #print(f"analysis_output:{analysis_output}")
+        # print(f"descriptions:{descriptions}")
         if self._verbose:
             logging.info(f"> Comprehensive Analysis Execution Output: {analysis_output}\n")
             analysis_output = f"'''\n{analysis_output}\n'''\n" if not analysis_output.startswith("'''") else analysis_output
@@ -469,7 +455,7 @@ class DataAnalysisToolSuite:
             run_sync(cl.Message(content=f"Generated Comprehensive Analysis Instructions:\n\n\n{analysis_response_str}\n").send())
 
     
-        analysis_output = self._instruction_parser.parsev2(analysis_response_str)
+        analysis_output = self._instruction_parser.parsev2(analysis_response_str,self._vision_llm)
         summary_output= self.summarize_output(analysis_output)
         #print(f"analysis_output:{analysis_output}")
         if self._verbose:
@@ -522,7 +508,6 @@ class DataAnalysisToolSuite:
             # FunctionTool.from_defaults(fn=self.execute_data_analysis_code),
             FunctionTool.from_defaults(fn=self.generate_and_run_data_analysis_code),
             FunctionTool.from_defaults(fn=self.retry_generate_data_analysis_code),
-            # FunctionTool.from_defaults(fn=self.execute_model_code),
             FunctionTool.from_defaults(fn=self.generate_and_run_model_code),
             FunctionTool.from_defaults(fn=self.retry_generate_model_code),
             FunctionTool.from_defaults(fn=self.generate_comprehensive_analysis),

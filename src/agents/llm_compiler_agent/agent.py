@@ -5,11 +5,12 @@ from llama_index.core.agent import AgentRunner, ReActAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from dotenv import load_dotenv
 from src.agents.base import BaseChainlitAgent
-from src.utils.llm_utils import load_model
+from src.utils.llm_utils import load_model,load_multimodal_model
 from .prompts import WELCOME_MESSAGE, BASE_SYSTEM_PROMPT, SYSTEM_PROMPT
 from src.const import MAX_ITERATIONS
 # from src.tools.data_analysis.model_selection import analyze_data, select_model
 from src.tools.data_analysis.tool import DataAnalysisToolSuite
+from typing import List, Dict, Any
 from PIL import Image
 load_dotenv(override=True)
 
@@ -20,7 +21,7 @@ class LLMCompilerAgent(BaseChainlitAgent):
     _AGENT_IDENTIFIER: str = "LLMAnalyzerAgent"
     _HISTORY_IDENTIFIER: str = f"{_AGENT_IDENTIFIER}_chat_history"
     _df: pd.DataFrame
-
+    _data_dict: Dict[str, Any] = {}
     
     @staticmethod
     def _get_chat_history() -> list[dict]:
@@ -48,10 +49,11 @@ class LLMCompilerAgent(BaseChainlitAgent):
     @classmethod
     def _init_tools(cls):
         llm= load_model()
-        data_tools = DataAnalysisToolSuite(cls._df, llm=llm).get_tools()
+        vision_llm= load_multimodal_model()
+        data_tools = DataAnalysisToolSuite(cls._df, llm=llm,vision_llm=vision_llm).get_tools()
         return data_tools
     @classmethod
-    async def _ask_file_handler(cls):
+    async def _ask_file_handler(cls) -> None:
         files = None
 
         # Wait for the user to upload a file
@@ -66,7 +68,8 @@ class LLMCompilerAgent(BaseChainlitAgent):
                     "image/jpeg",
                     "application/octet-stream"  # Common MIME type for .dat files
                 ],
-                max_size_mb=25
+                max_size_mb=25,
+                max_files= 3
             ).send()
 
         uploaded_file = files[0]
@@ -101,13 +104,6 @@ class LLMCompilerAgent(BaseChainlitAgent):
             with open(file_path, 'r') as file:
                 content = file.read()
             await cl.Message(content=f".dat file content:\n\n{content}").send()
-
-        # df = pd.read_csv(text_file.path)
-        
-        # await cl.Message(f"{df.head().to_markdown()}\n\nFile uploaded successfully!").send()
-        
-        
-        return file_path
         
     @classmethod
     async def aon_start(cls, *args, **kwargs):
@@ -151,3 +147,45 @@ class LLMCompilerAgent(BaseChainlitAgent):
             "role": MessageRole.ASSISTANT
         })
         LLMCompilerAgent._set_chat_history(chat_history)
+
+
+    
+
+
+
+
+          
+    # @classmethod
+    # async def on_action(cls, action: cl.Action):
+    #     if action.name == "analyze_data":
+    #         df = pd.read_csv(cls._df_path)
+    #         analysis_info = DataAnalysisToolSuite(df, cls._agent.llm).analyze_data()
+    #         await cl.Message(content=f"Data Analysis:\n{analysis_info}").send()
+    #     elif action.name == "build_model":
+    #         res = await cl.AskActionMessage(
+    #             content="Choose the model training method:",
+    #             actions=[
+    #                 cl.Action(name="build_model_sklearn", value="build_model_sklearn", label="🛠️ Build Model with scikit-learn"),
+    #                 cl.Action(name="build_model_pytorch", value="build_model_pytorch", label="🛠️ Build Model with PyTorch"),
+    #             ]
+    #         ).send()
+
+    #         if res:
+    #             if res.get("value") == "build_model_sklearn":
+    #                 df = pd.read_csv(cls._df_path)
+    #                 result = BuildModelToolSuite(df, cls._agent.llm).build_and_train_model(target_column="target_column", use_gpu=False)
+    #                 await cl.Message(content=f"Model Training with scikit-learn:\n{result.response}").send()
+    #             elif res.get("value") == "build_model_pytorch":
+    #                 df = pd.read_csv(cls._df_path)
+    #                 result = BuildModelToolSuite(df, cls._agent.llm).build_and_train_model(target_column="target_column", use_gpu=True)
+    #                 await cl.Message(content=f"Model Training with PyTorch:\n{result.response}").send()
+
+    @classmethod
+    async def show_action_buttons(cls):
+        await cl.AskActionMessage(
+            content="Choose an action:",
+            actions=[
+                cl.Action(name="analyze_data", value="analyze_data", label="📊 Analyze Data"),
+                cl.Action(name="build_model", value="build_model", label="🛠️ Build Model"),
+            ]
+        ).send()

@@ -177,7 +177,7 @@ DEFAULT_COMPREHENSIVE_ANALYSIS_PROMPT_TMPL = (
     "Your goal is to help users understand their data by providing clear and detailed insights. Explain your findings, suggest appropriate statistical methods, and offer guidance on data visualization techniques.\n"
     "Ensure the analysis is well-documented, reproducible, and presented in a professional yet approachable manner.\n"
     "Do not generate code to display the datatype of each column. Instead, summarize the data types and highlight any that require special attention.\n"
-    "Generate code to show the plot,please\n"
+    "Generate code to show the plot,please. If user ask not to show, please follow them\n"
     "Focus on creating reasonable and informative plots that emphasize key relationships and distributions within the data.\n"
     "Expression:"
 )
@@ -212,6 +212,38 @@ DEFAULT_SUMMARIZE_PROMPT = PromptTemplate(
     DEFAULT_SUMMARIZE_PROMPT_TMPL, prompt_type=PromptType.MODEL
 )
 
+
+# DEFAULT_SUMMARIZE_INSTRUCTION_STR = (
+#     "1. Read the provided content carefully.\n"
+#     "2. Create a brief summary of the main ideas and essential details from the generated response (content1). Keep this summary concise and to the point.\n"
+#     "3. If content1 includes code, briefly summarize the purpose and key components of the code.\n"
+#     "4. Summarize the output of the code (content2) and include a summary of these results in your summary. Ensure that you do not repeat information already covered in content1.\n"
+#     "5. If the content includes statistical summaries (e.g., count, mean, std, min, 25%, 50%, 75%, max), format this information into a markdown table for clarity.\n"
+#     "6. Ensure your summary is concise and clear.\n"
+#     "7. Do not include unnecessary information.\n"
+#     "8. Make your summary easy to read and understand, even for someone not familiar with the original content.\n"
+#     "9. If the output is tabular data, please create a table in markdown to fit those data.\n"
+#     "10. If the output contains python code, please write that python code in markdown.\n"
+#     "11. If the content includes plots or visual data, describe the key insights and trends from those visuals.\n"
+#     "12. If there is no content to summarize, please indicate that there is no content available.\n"
+# )
+
+# DEFAULT_SUMMARIZE_PROMPT_TMPL = (
+#     "You are an advanced summarization agent. Your goal is to help users understand the key points and important details from the generated response and the output of the code. Please follow these instructions:\n\n"
+#     "{instruction_str}\n\n"
+#     "Here is the content to summarize:\n\n"
+#     "Generated Response (content1):\n"
+#     "{content1}\n\n"
+#     "Output of the Code (content2):\n"
+#     "{content2}\n\n"
+#     "Ensure your summary is concise, clear, and captures the main ideas and essential details from both the generated response and the output of the code. Avoid repeating information already present in content1. Keep the summary of content1 brief. Do not include unnecessary information. Your summary should be easy to read and understand, even for someone not familiar with the original content.\n"
+# )
+
+# DEFAULT_SUMMARIZE_PROMPT = PromptTemplate(
+#     DEFAULT_SUMMARIZE_PROMPT_TMPL, prompt_type=PromptType.MODEL
+# )
+
+
 DEFAULT_LOAD_DATA_PROMPT_TMPL = (
     "You are a data loading agent. Your task is to load data from various types of files including CSV, Excel, images, and text files. "
     "Here are the details of the files uploaded:\n"
@@ -236,32 +268,21 @@ DEFAULT_LOAD_DATA_PROMPT = PromptTemplate(
     DEFAULT_LOAD_DATA_PROMPT_TMPL, prompt_type=PromptType.MODEL
 )
 
-
-
 DEFAULT_ANALYZE_PLOT_INSTRUCTION_STR = (
-    "1. Carefully examine the provided plot image and the extracted text.\n"
+    "You are an advanced plot analysis agent. Your goal is to help users understand the key points and important details from the provided plot image. Please follow these instructions:"
+
+    "1. Carefully examine the provided plot image.\n"
     "2. Identify and interpret the key elements of the plot, including titles, labels, and any annotations.\n"
     "3. Analyze the visual features of the plot, such as data points, lines, bars, or other graphical elements.\n"
     "4. Summarize the main findings and insights from the plot.\n"
-    # "5. If there are any statistical summaries in the text (e.g., count, mean, std, min, 25%, 50%, 75%, max), format this information into a markdown table for clarity.\n"
-    "5. Do not generate statistical summaries (count, mean, std, min, 25%,....)"
-    "6. Ensure your analysis is concise and clear.\n"
-    "7. Do not include unnecessary information.\n"
-    "8. Make your analysis easy to read and understand, even for someone not familiar with the original plot.\n"
-    "9. If the output is tabular data, create a table in markdown to fit those data.\n"
-    "10. If the output contains Python code, write that Python code in markdown.\n"
-    "11. If there is no significant text content to analyze, base your summary on the visual features of the plot alone.\n"
-)
-
-DEFAULT_ANALYZE_PLOT_PROMPT_TMPL = (
-    "You are an advanced plot analysis agent. Your goal is to help users understand the key points and important details from the provided plot image and extracted text. Please follow these instructions:\n\n"
-    "{instruction_str}\n\n"
-    "Here is the content to analyze:\n"
-    "Extracted Text: {extracted_text}\n"
-    "Visual Features: {visual_features}\n\n"
-    "Ensure your analysis is concise, clear, and captures the main findings and insights. Do not include unnecessary information. Your analysis should be easy to read and understand, even for someone not familiar with the original plot.\n"
-)
-
-DEFAULT_ANALYZE_PLOT_PROMPT = PromptTemplate(
-    DEFAULT_ANALYZE_PLOT_PROMPT_TMPL, prompt_type=PromptType.MODEL
+    "5. Ensure your analysis is concise and clear.\n"
+    "6. Do not include unnecessary information.\n"
+    "7. Make your analysis easy to read and understand, even for someone not familiar with the original plot.\n"
+    "8. If the output is tabular data, create a table in markdown to fit those data.\n"
+    "9. If the output contains Python code, write that Python code in markdown.\n"
+    "10. If there is no significant text content to analyze, base your summary on the visual features of the plot alone.\n"
+    "11. Write your answer in markdown format.\n"
+    "12. Use smaller markdown headers for titles and main points (e.g., #### for titles and **bold** for main points).\n"
+    "13. Provide insights and interpretations for each analysis step to help understand the significance of the findings.\n"
+    "14. Ensure the analysis is reproducible and clearly documented.\n"
 )
