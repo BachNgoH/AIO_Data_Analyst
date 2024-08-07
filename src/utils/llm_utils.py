@@ -3,7 +3,8 @@ from llama_index.llms.groq import Groq
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.gemini import Gemini
-from src.image_reasoning.llama_index.legacy.multi_model_llms.openai import OpenAIMultiModal
+from src.image_reasoning.openai import OpenAIMultiModal
+
 from src.const import LLM_PROVIDER, MODEL_ID, TEMPERATURE,LLM_VISION_PROVIDER,MODEL_VISION_ID
 
 import logging

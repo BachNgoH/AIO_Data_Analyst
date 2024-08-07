@@ -14,27 +14,27 @@ from typing import (
     get_args,
 )
 
-from src.image_reasoning.llama_index.legacy.bridge.pydantic import BaseModel, Field
-from src.image_reasoning.llama_index.legacy.callbacks.base import CallbackManager
-from src.image_reasoning.llama_index.legacy.core.llms.types import (
+from src.image_reasoning.bridge.pydantic import BaseModel, Field
+from src.image_reasoning.base import CallbackManager
+from src.image_reasoning.types import (
     ChatResponse,
     CompletionResponse,
 )
-from src.image_reasoning.llama_index.legacy.core.response.schema import Response
-from src.image_reasoning.llama_index.legacy.schema import NodeWithScore, QueryBundle, TextNode
+from src.image_reasoning.schema import Response
+# from src.image_reasoning.llama_index.legacy.schema import NodeWithScore, QueryBundle, TextNode
 
 
 ## Define common types used throughout these components
-StringableInput = Union[
-    CompletionResponse,
-    ChatResponse,
-    str,
-    QueryBundle,
-    Response,
-    Generator,
-    NodeWithScore,
-    TextNode,
-]
+# StringableInput = Union[
+#     CompletionResponse,
+#     ChatResponse,
+#     str,
+#     QueryBundle,
+#     Response,
+#     Generator,
+#     NodeWithScore,
+#     TextNode,
+# ]
 
 
 def validate_and_convert_stringable(input: Any) -> str:

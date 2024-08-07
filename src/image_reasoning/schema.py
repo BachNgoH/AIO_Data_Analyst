@@ -1,5 +1,6 @@
-"""Base schema for data structures."""
+"""Response schema."""
 
+from dataclasses import dataclass, field
 import json
 import textwrap
 import uuid
@@ -8,20 +9,14 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from hashlib import sha256
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Self
-
-from src.image_reasoning.llama_index.legacy.bridge.pydantic import BaseModel, Field
-from src.image_reasoning.llama_index.legacy.utils import SAMPLE_TEXT, truncate_text
-
-
-if TYPE_CHECKING:
-    from haystack.schema import Document as HaystackDocument
-    from semantic_kernel.memory.memory_record import MemoryRecord
-
-    from llama_index.legacy.bridge.langchain import Document as LCDocument
+from src.image_reasoning.bridge.pydantic import BaseModel
+from src.image_reasoning.types import TokenGen
+from src.image_reasoning.bridge.pydantic import BaseModel, Field
+from src.image_reasoning.utils import SAMPLE_TEXT, truncate_text
 
 
 DEFAULT_TEXT_NODE_TMPL = "{metadata_str}\n\n{content}"
@@ -31,6 +26,9 @@ TRUNCATE_LENGTH = 350
 WRAP_WIDTH = 70
 
 ImageType = Union[str, BytesIO]
+
+
+
 
 
 class BaseComponent(BaseModel):
@@ -586,189 +584,135 @@ class NodeWithScore(BaseComponent):
         return self.node.get_embedding()
 
 
-# Document Classes for Readers
-
-
-class Document(TextNode):
-    """Generic interface for a data document.
-
-    This document connects to data sources.
-
-    """
-
-    # TODO: A lot of backwards compatibility logic here, clean up
-    id_: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="Unique ID of the node.",
-        alias="doc_id",
-    )
-
-    _compat_fields = {"doc_id": "id_", "extra_info": "metadata"}
-
-    @classmethod
-    def get_type(cls) -> str:
-        """Get Document type."""
-        return ObjectType.DOCUMENT
-
-    @property
-    def doc_id(self) -> str:
-        """Get document ID."""
-        return self.id_
-
-    def __str__(self) -> str:
-        source_text_truncated = truncate_text(
-            self.get_content().strip(), TRUNCATE_LENGTH
-        )
-        source_text_wrapped = textwrap.fill(
-            f"Text: {source_text_truncated}\n", width=WRAP_WIDTH
-        )
-        return f"Doc ID: {self.doc_id}\n{source_text_wrapped}"
-
-    def get_doc_id(self) -> str:
-        """TODO: Deprecated: Get document ID."""
-        return self.id_
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name in self._compat_fields:
-            name = self._compat_fields[name]
-        super().__setattr__(name, value)
-
-    def to_langchain_format(self) -> "LCDocument":
-        """Convert struct to LangChain document format."""
-        from llama_index.legacy.bridge.langchain import Document as LCDocument
-
-        metadata = self.metadata or {}
-        return LCDocument(page_content=self.text, metadata=metadata)
-
-    @classmethod
-    def from_langchain_format(cls, doc: "LCDocument") -> "Document":
-        """Convert struct from LangChain document format."""
-        return cls(text=doc.page_content, metadata=doc.metadata)
-
-    def to_haystack_format(self) -> "HaystackDocument":
-        """Convert struct to Haystack document format."""
-        from haystack.schema import Document as HaystackDocument
-
-        return HaystackDocument(
-            content=self.text, meta=self.metadata, embedding=self.embedding, id=self.id_
-        )
-
-    @classmethod
-    def from_haystack_format(cls, doc: "HaystackDocument") -> "Document":
-        """Convert struct from Haystack document format."""
-        return cls(
-            text=doc.content, metadata=doc.meta, embedding=doc.embedding, id_=doc.id
-        )
-
-    def to_embedchain_format(self) -> Dict[str, Any]:
-        """Convert struct to EmbedChain document format."""
-        return {
-            "doc_id": self.id_,
-            "data": {"content": self.text, "meta_data": self.metadata},
-        }
-
-    @classmethod
-    def from_embedchain_format(cls, doc: Dict[str, Any]) -> "Document":
-        """Convert struct from EmbedChain document format."""
-        return cls(
-            text=doc["data"]["content"],
-            metadata=doc["data"]["meta_data"],
-            id_=doc["doc_id"],
-        )
-
-    def to_semantic_kernel_format(self) -> "MemoryRecord":
-        """Convert struct to Semantic Kernel document format."""
-        import numpy as np
-        from semantic_kernel.memory.memory_record import MemoryRecord
-
-        return MemoryRecord(
-            id=self.id_,
-            text=self.text,
-            additional_metadata=self.get_metadata_str(),
-            embedding=np.array(self.embedding) if self.embedding else None,
-        )
-
-    @classmethod
-    def from_semantic_kernel_format(cls, doc: "MemoryRecord") -> "Document":
-        """Convert struct from Semantic Kernel document format."""
-        return cls(
-            text=doc._text,
-            metadata={"additional_metadata": doc._additional_metadata},
-            embedding=doc._embedding.tolist() if doc._embedding is not None else None,
-            id_=doc._id,
-        )
-
-    def to_vectorflow(self, client: Any) -> None:
-        """Send a document to vectorflow, since they don't have a document object."""
-        # write document to temp file
-        import tempfile
-
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(self.text.encode("utf-8"))
-            f.flush()
-            client.embed(f.name)
-
-    @classmethod
-    def example(cls) -> "Document":
-        return Document(
-            text=SAMPLE_TEXT,
-            metadata={"filename": "README.md", "category": "codebase"},
-        )
-
-    @classmethod
-    def class_name(cls) -> str:
-        return "Document"
-
-
-class ImageDocument(Document, ImageNode):
-    """Data document containing an image."""
-
-    @classmethod
-    def class_name(cls) -> str:
-        return "ImageDocument"
-
 
 @dataclass
-class QueryBundle(DataClassJsonMixin):
-    """
-    Query bundle.
+class Response:
+    """Response object.
 
-    This dataclass contains the original query string and associated transformations.
+    Returned if streaming=False.
 
-    Args:
-        query_str (str): the original user-specified query string.
-            This is currently used by all non embedding-based queries.
-        custom_embedding_strs (list[str]): list of strings used for embedding the query.
-            This is currently used by all embedding-based queries.
-        embedding (list[float]): the stored embedding for the query.
+    Attributes:
+        response: The response text.
+
     """
 
-    query_str: str
-    # using single image path as query input
-    image_path: Optional[str] = None
-    custom_embedding_strs: Optional[List[str]] = None
-    embedding: Optional[List[float]] = None
-
-    @property
-    def embedding_strs(self) -> List[str]:
-        """Use custom embedding strs if specified, otherwise use query str."""
-        if self.custom_embedding_strs is None:
-            if len(self.query_str) == 0:
-                return []
-            return [self.query_str]
-        else:
-            return self.custom_embedding_strs
-
-    @property
-    def embedding_image(self) -> List[ImageType]:
-        """Use image path for image retrieval."""
-        if self.image_path is None:
-            return []
-        return [self.image_path]
+    response: Optional[str]
+    source_nodes: List[NodeWithScore] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
 
     def __str__(self) -> str:
         """Convert to string representation."""
-        return self.query_str
+        return self.response or "None"
+
+    def get_formatted_sources(self, length: int = 100) -> str:
+        """Get formatted sources text."""
+        texts = []
+        for source_node in self.source_nodes:
+            fmt_text_chunk = truncate_text(source_node.node.get_content(), length)
+            doc_id = source_node.node.node_id or "None"
+            source_text = f"> Source (Doc id: {doc_id}): {fmt_text_chunk}"
+            texts.append(source_text)
+        return "\n\n".join(texts)
 
 
-QueryType = Union[str, QueryBundle]
+@dataclass
+class PydanticResponse:
+    """PydanticResponse object.
+
+    Returned if streaming=False.
+
+    Attributes:
+        response: The response text.
+
+    """
+
+    response: Optional[BaseModel]
+    source_nodes: List[NodeWithScore] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
+
+    def __str__(self) -> str:
+        """Convert to string representation."""
+        return self.response.json() if self.response else "None"
+
+    def __getattr__(self, name: str) -> Any:
+        """Get attribute, but prioritize the pydantic  response object."""
+        if self.response is not None and name in self.response.dict():
+            return getattr(self.response, name)
+        else:
+            return None
+
+    def get_formatted_sources(self, length: int = 100) -> str:
+        """Get formatted sources text."""
+        texts = []
+        for source_node in self.source_nodes:
+            fmt_text_chunk = truncate_text(source_node.node.get_content(), length)
+            doc_id = source_node.node.node_id or "None"
+            source_text = f"> Source (Doc id: {doc_id}): {fmt_text_chunk}"
+            texts.append(source_text)
+        return "\n\n".join(texts)
+
+    def get_response(self) -> Response:
+        """Get a standard response object."""
+        response_txt = self.response.json() if self.response else "None"
+        return Response(response_txt, self.source_nodes, self.metadata)
+
+
+@dataclass
+class StreamingResponse:
+    """StreamingResponse object.
+
+    Returned if streaming=True.
+
+    Attributes:
+        response_gen: The response generator.
+
+    """
+
+    response_gen: TokenGen
+    source_nodes: List[NodeWithScore] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
+    response_txt: Optional[str] = None
+
+    def __str__(self) -> str:
+        """Convert to string representation."""
+        if self.response_txt is None and self.response_gen is not None:
+            response_txt = ""
+            for text in self.response_gen:
+                response_txt += text
+            self.response_txt = response_txt
+        return self.response_txt or "None"
+
+    def get_response(self) -> Response:
+        """Get a standard response object."""
+        if self.response_txt is None and self.response_gen is not None:
+            response_txt = ""
+            for text in self.response_gen:
+                response_txt += text
+            self.response_txt = response_txt
+        return Response(self.response_txt, self.source_nodes, self.metadata)
+
+    def print_response_stream(self) -> None:
+        """Print the response stream."""
+        if self.response_txt is None and self.response_gen is not None:
+            response_txt = ""
+            for text in self.response_gen:
+                print(text, end="", flush=True)
+                response_txt += text
+            self.response_txt = response_txt
+        else:
+            print(self.response_txt)
+
+    def get_formatted_sources(self, length: int = 100, trim_text: int = True) -> str:
+        """Get formatted sources text."""
+        texts = []
+        for source_node in self.source_nodes:
+            fmt_text_chunk = source_node.node.get_content()
+            if trim_text:
+                fmt_text_chunk = truncate_text(fmt_text_chunk, length)
+            node_id = source_node.node.node_id or "None"
+            source_text = f"> Source (Node id: {node_id}): {fmt_text_chunk}"
+            texts.append(source_text)
+        return "\n\n".join(texts)
+
+
+RESPONSE_TYPE = Union[Response, StreamingResponse, PydanticResponse]

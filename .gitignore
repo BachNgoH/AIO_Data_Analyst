@@ -42,3 +42,5 @@ charts/*
 __pycache__/*
 
 .files/*
+
+_static/*
