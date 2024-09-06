@@ -3,11 +3,11 @@ from llama_index.llms.groq import Groq
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.gemini import Gemini
-from src.const import LLM_PROVIDER, MODEL_ID, TEMPERATURE
-from dotenv import load_dotenv
-import logging
+from src.image_reasoning.openai import OpenAIMultiModal
 
-load_dotenv(override=True)
+from src.const import LLM_PROVIDER, MODEL_ID, TEMPERATURE,LLM_VISION_PROVIDER,MODEL_VISION_ID
+
+import logging
 
 def load_model():
     """
@@ -35,5 +35,15 @@ def load_model():
     elif LLM_PROVIDER == "gemini":
         logging.info(f"Loading Gemini Model: {MODEL_ID}")
         return Gemini(model=MODEL_ID, temperature=TEMPERATURE, api_key=os.getenv("GOOGLE_API_KEY"))
+    else:
+        raise NotImplementedError("The implementation for other types of LLMs are not ready yet!")
+    
+
+def load_multimodal_model():
+    logging.info(f"Loading Vision Model: {MODEL_VISION_ID}")
+    logging.info("Please wait!")
+    if LLM_VISION_PROVIDER =="openai":
+        logging.info(f"Loading OpenAI Model: {MODEL_VISION_ID}")
+        return OpenAIMultiModal(model=MODEL_VISION_ID,api_key=os.getenv("OPENAI_API_KEY"))
     else:
         raise NotImplementedError("The implementation for other types of LLMs are not ready yet!")
