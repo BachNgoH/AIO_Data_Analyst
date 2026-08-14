@@ -1,3 +1,5 @@
+
+
 <div align="center">
   <img src="./public/project_logo.png" alt="AIO Data Analyst" width="500" class="logo-light"/>
 </div>
@@ -54,7 +56,12 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-
+**4. Set up environment variables:**
+Create a `.env` file in the root directory and add your LLM API key:
+```bash
+OPENAI_API_KEY=your_api_key_here
+```
+(Optional: Update `LLM_PROVIDER` and `MODEL_ID` in `src/const.py` to switch providers.)
 
 **Starting the Application**
 
@@ -72,4 +79,3 @@ AIO Data Analyst is made possible by these key technologies:
 - [PandasAI](https://github.com/gventuri/pandas-ai): Referencing for implementing advanced data analysis.
 - [LlamaIndex](https://www.llamaindex.ai/): Providing the RAG (Retrieval Augmented Generation) framework.
 - [Chainlit](https://docs.chainlit.io/get-started/overview): Enabling the intuitive user interface.
-
